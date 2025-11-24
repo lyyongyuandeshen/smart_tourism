@@ -1,0 +1,25 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/*
+/.vscode/*
+.DS_Store
+/logs
+.externalNativeBuild
+.cxx
+/*/.mvn/*
+/*/target/*
+/*/mvnw*
+/log/*
+/app/log/*
+/**/*.log
+/**/htmls/output*.html
+/**/nacos-data/**
+
+# Python bytecode
+*.pyc
+*.pyo
+__pycache__/
+cache
