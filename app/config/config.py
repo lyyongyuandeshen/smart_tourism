@@ -2,6 +2,7 @@ import os
 from venv import logger
 
 import redis
+from dotenv import load_dotenv
 from mysql.connector import pooling
 
 from app.config.mysql_config import MySqlConfig
@@ -24,6 +25,7 @@ class ConfigManager:
 
     def _load_mysql_config(self) -> MySqlConfig:
         """从环境变量加载MySQL配置"""
+        logger.info(f"os.getenv('MYSQL_HOST'): {os.getenv('MYSQL_HOST')}")
         return MySqlConfig(
             host=os.getenv("MYSQL_HOST", "127.0.0.1"),
             port=int(os.getenv("MYSQL_PORT", "3306")),
@@ -33,6 +35,8 @@ class ConfigManager:
             pool_size=int(os.getenv("MYSQL_POOL_SIZE", "5")),
             pool_timeout=int(os.getenv("MYSQL_POOL_TIMEOUT", "30")),
             charset=os.getenv("MYSQL_CHARSET", "utf8mb4"),
+            auth_plugin="mysql_native_password",
+            use_pure=True,
             autocommit=os.getenv("MYSQL_AUTOCOMMIT", "true").lower() == "true"
         )
 
@@ -75,6 +79,7 @@ class ConfigManager:
     def _init_mysql_pool(self, database=None):
         """初始化MySQL配置信息，创建连接池"""
         mysql_conf: MySqlConfig = self.get_mysql_config()
+        logger.info(f"mysql_conf: {mysql_conf}")
         if not mysql_conf:
             raise ValueError("MySQL configuration is missing")
         required_fields = ['host', 'port', 'user', 'password', 'database']
@@ -91,8 +96,7 @@ class ConfigManager:
                 user=mysql_conf.user,
                 password=mysql_conf.password,
                 database=mysql_conf.database if database is None else database,
-                connect_timeout=mysql_conf.pool_timeout
-            )
+                connect_timeout=mysql_conf.pool_timeout)
             logger.info(
                 f"init mysql connection pool, host: {mysql_conf.host}, "
                 f"port: {mysql_conf.port}, db: {mysql_conf.database}"
@@ -100,3 +104,14 @@ class ConfigManager:
         except Exception as e:
             logger.error(f"init mysql connection pool failed: {str(e)}")
             raise
+
+    def inject(self):
+        """注入配置管理器"""
+        # self._init_redis_config()
+        self._init_mysql_pool()
+
+
+# 加载环境变量
+load_dotenv(dotenv_path=".env")
+# 创建全局单例实例
+config = ConfigManager()

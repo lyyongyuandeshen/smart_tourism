@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
-from app.config.config import ConfigManager
+from app.config.config import config
 
 app = FastAPI(
     title="智慧旅游系统API",
@@ -21,19 +21,14 @@ app.add_middleware(
 # 注册API路由
 app.include_router(api_router, prefix="/api/v1")
 
-# 初始化配置管理器
-config_manager = ConfigManager()
+
+async def init_function():
+    config.inject()
 
 
-@app.on_event("startup")
-async def startup_event():
-    """应用启动时初始化数据库连接池"""
-    try:
-        config_manager._init_mysql_pool()
-        print("MySQL连接池初始化成功")
-    except Exception as e:
-        print(f"MySQL连接池初始化失败: {str(e)}")
+app.add_event_handler("startup", init_function)
 
 if __name__ == '__main__':
     import uvicorn
+
     uvicorn.run("main:app", host="0.0.0.0", port=8090, proxy_headers=True)
