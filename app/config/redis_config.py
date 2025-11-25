@@ -1,10 +1,19 @@
-from dataclasses import Field
 from typing import Optional
 
 
 class RedisConfig:
-    host: str = Field(default="127.0.0.1", description="Redis 主机地址")
-    port: int = Field(default=6379, description="Redis 端口")
-    password: Optional[str] = Field(default="", description="Redis 密码")
-    db: int = Field(default=1, description="Redis 数据库编号")
-    max_connections: int = Field(default=10, description="Redis 连接池最大连接数")
+    """Redis数据库配置"""
+    
+    def __init__(self, **kwargs):
+        """
+        从关键字参数初始化配置
+        
+        Args:
+            **kwargs: 配置参数，如host, port, password等
+        """
+        # 默认值
+        self.host: str = kwargs.get('host', "127.0.0.1")
+        self.port: int = kwargs.get('port', 6379)
+        self.password: Optional[str] = kwargs.get('password', "")
+        self.db: int = kwargs.get('db', 1)
+        self.max_connections: int = kwargs.get('max_connections', 10)
