@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional
 
+from app.config.config import ConfigManager
 from app.models.scenic_models import (
     ScenicGuideCreateRequest,
     ScenicGuideUpdateRequest,
@@ -12,17 +13,13 @@ from app.models.scenic_models import (
 )
 from app.models.ticket_models import TicketTimeSlotResponse
 from app.services.scenic_service import ScenicService
-from app.config.config import ConfigManager
+from app.config.config import config
 
 router = APIRouter()
 
-# 全局配置管理器实例
-config_manager = ConfigManager()
-
-
 def get_scenic_service() -> ScenicService:
     """获取景点服务实例"""
-    pool = config_manager.get_mysql_pool()
+    pool = config.get_mysql_pool()
     if not pool:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -35,8 +32,8 @@ def get_scenic_service() -> ScenicService:
 
 @router.post("/guides", response_model=CommonResponse, status_code=status.HTTP_201_CREATED)
 async def create_scenic_guide(
-    request: ScenicGuideCreateRequest,
-    scenic_service: ScenicService = Depends(get_scenic_service)
+        request: ScenicGuideCreateRequest,
+        scenic_service: ScenicService = Depends(get_scenic_service)
 ):
     """
     创建景点导览
@@ -59,8 +56,8 @@ async def create_scenic_guide(
 
 @router.get("/guides/{guide_id}", response_model=ScenicGuideResponse)
 async def get_scenic_guide(
-    guide_id: str,
-    scenic_service: ScenicService = Depends(get_scenic_service)
+        guide_id: str,
+        scenic_service: ScenicService = Depends(get_scenic_service)
 ):
     """
     根据ID查询景点导览
@@ -83,8 +80,8 @@ async def get_scenic_guide(
 
 @router.get("/guides/scenic/{scenic_id}", response_model=ScenicGuideResponse)
 async def get_scenic_guide_by_scenic_id(
-    scenic_id: str,
-    scenic_service: ScenicService = Depends(get_scenic_service)
+        scenic_id: str,
+        scenic_service: ScenicService = Depends(get_scenic_service)
 ):
     """
     根据景点ID查询景点导览
@@ -107,8 +104,8 @@ async def get_scenic_guide_by_scenic_id(
 
 @router.get("/guides", response_model=List[ScenicGuideResponse])
 async def get_all_scenic_guides(
-    open_status: Optional[int] = Query(None, description="开放状态：0-关闭，1-开放"),
-    scenic_service: ScenicService = Depends(get_scenic_service)
+        open_status: Optional[int] = Query(None, description="开放状态：0-关闭，1-开放"),
+        scenic_service: ScenicService = Depends(get_scenic_service)
 ):
     """
     根据open_status开放状态查询所有景点导览，open_status为空时查询所有
@@ -126,9 +123,9 @@ async def get_all_scenic_guides(
 
 @router.put("/guides/{guide_id}", response_model=CommonResponse)
 async def update_scenic_guide(
-    guide_id: str,
-    request: ScenicGuideUpdateRequest,
-    scenic_service: ScenicService = Depends(get_scenic_service)
+        guide_id: str,
+        request: ScenicGuideUpdateRequest,
+        scenic_service: ScenicService = Depends(get_scenic_service)
 ):
     """
     更新景点导览
@@ -152,8 +149,8 @@ async def update_scenic_guide(
 
 @router.delete("/guides/{guide_id}", response_model=CommonResponse)
 async def delete_scenic_guide(
-    guide_id: str,
-    scenic_service: ScenicService = Depends(get_scenic_service)
+        guide_id: str,
+        scenic_service: ScenicService = Depends(get_scenic_service)
 ):
     """
     删除景点导览
@@ -178,8 +175,8 @@ async def delete_scenic_guide(
 
 @router.post("/time-slots", response_model=CommonResponse, status_code=status.HTTP_201_CREATED)
 async def create_time_slot(
-    request: TimeSlotCreateRequest,
-    scenic_service: ScenicService = Depends(get_scenic_service)
+        request: TimeSlotCreateRequest,
+        scenic_service: ScenicService = Depends(get_scenic_service)
 ):
     """
     创建时段
@@ -202,8 +199,8 @@ async def create_time_slot(
 
 @router.post("/time-slots/batch", response_model=CommonResponse, status_code=status.HTTP_201_CREATED)
 async def batch_create_time_slots(
-    request: TimeSlotBatchCreateRequest,
-    scenic_service: ScenicService = Depends(get_scenic_service)
+        request: TimeSlotBatchCreateRequest,
+        scenic_service: ScenicService = Depends(get_scenic_service)
 ):
     """
     批量创建时段
@@ -226,10 +223,10 @@ async def batch_create_time_slots(
 
 @router.get("/time-slots/scenic/{scenic_id}", response_model=List[TicketTimeSlotResponse])
 async def get_time_slots_by_scenic(
-    scenic_id: str,
-    start_date: Optional[str] = Query(None, description="开始日期，格式：YYYY-MM-DD"),
-    end_date: Optional[str] = Query(None, description="结束日期，格式：YYYY-MM-DD"),
-    scenic_service: ScenicService = Depends(get_scenic_service)
+        scenic_id: str,
+        start_date: Optional[str] = Query(None, description="开始日期，格式：YYYY-MM-DD"),
+        end_date: Optional[str] = Query(None, description="结束日期，格式：YYYY-MM-DD"),
+        scenic_service: ScenicService = Depends(get_scenic_service)
 ):
     """
     根据景点ID查询时段
@@ -249,9 +246,9 @@ async def get_time_slots_by_scenic(
 
 @router.put("/time-slots/{slot_id}", response_model=CommonResponse)
 async def update_time_slot(
-    slot_id: str,
-    request: TimeSlotUpdateRequest,
-    scenic_service: ScenicService = Depends(get_scenic_service)
+        slot_id: str,
+        request: TimeSlotUpdateRequest,
+        scenic_service: ScenicService = Depends(get_scenic_service)
 ):
     """
     更新时段
@@ -275,8 +272,8 @@ async def update_time_slot(
 
 @router.delete("/time-slots/{slot_id}", response_model=CommonResponse)
 async def delete_time_slot(
-    slot_id: str,
-    scenic_service: ScenicService = Depends(get_scenic_service)
+        slot_id: str,
+        scenic_service: ScenicService = Depends(get_scenic_service)
 ):
     """
     删除时段
@@ -299,8 +296,8 @@ async def delete_time_slot(
 
 @router.delete("/time-slots/scenic/{scenic_id}", response_model=CommonResponse)
 async def delete_time_slots_by_scenic(
-    scenic_id: str,
-    scenic_service: ScenicService = Depends(get_scenic_service)
+        scenic_id: str,
+        scenic_service: ScenicService = Depends(get_scenic_service)
 ):
     """
     删除景点的所有时段

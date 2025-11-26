@@ -7,17 +7,17 @@ from app.models.ticket_models import (
     PurchaseTicketResponse
 )
 from app.services.ticket_service import TicketService
-from app.config.config import ConfigManager
+from app.config.config import ConfigManager, config
 
 router = APIRouter()
 
 # 全局配置管理器实例
-config_manager = ConfigManager()
+# config = ConfigManager()
 
 
 def get_ticket_service() -> TicketService:
     """获取票务服务实例"""
-    pool = config_manager.get_mysql_pool()
+    pool = config.get_mysql_pool()
     if not pool:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -28,8 +28,8 @@ def get_ticket_service() -> TicketService:
 
 @router.get("/time-slots/{scenic_id}", response_model=List[TicketTimeSlotResponse])
 async def get_available_time_slots(
-    scenic_id: str,
-    ticket_service: TicketService = Depends(get_ticket_service)
+        scenic_id: str,
+        ticket_service: TicketService = Depends(get_ticket_service)
 ):
     """
     根据景点ID查询所有可用时段的余票信息
@@ -53,8 +53,8 @@ async def get_available_time_slots(
 
 @router.post("/purchase", response_model=PurchaseTicketResponse)
 async def purchase_ticket(
-    request: PurchaseTicketRequest,
-    ticket_service: TicketService = Depends(get_ticket_service)
+        request: PurchaseTicketRequest,
+        ticket_service: TicketService = Depends(get_ticket_service)
 ):
     """
     购票接口
@@ -68,13 +68,13 @@ async def purchase_ticket(
     """
     try:
         response = ticket_service.purchase_ticket(request)
-        
+
         if not response.success:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=response.message
             )
-        
+
         return response
     except HTTPException:
         raise
