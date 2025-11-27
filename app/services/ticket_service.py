@@ -1,11 +1,12 @@
 import uuid
 import hashlib
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 from typing import List, Optional
 from mysql.connector import pooling
 
 from app.repository.ticket_repo import TicketRepository
+from app.repository.order_repo import OrderRepository
 from app.models.ticket_models import (
     TicketTimeSlotResponse, 
     PurchaseTicketRequest, 
@@ -18,18 +19,24 @@ class TicketService:
     
     def __init__(self, pool: pooling.MySQLConnectionPool):
         self.ticket_repo = TicketRepository(pool)
+        self.order_repo = OrderRepository(pool)
     
-    def get_available_time_slots(self, scenic_id: str) -> List[TicketTimeSlotResponse]:
+    def get_available_time_slots(self, scenic_id: str, reservation_date: Optional[date] = None) -> List[TicketTimeSlotResponse]:
         """
         根据景点ID查询所有可用时段的余票信息
         
         Args:
             scenic_id: 景点ID
+            reservation_date: 预约日期，为空则默认为当天日期
             
         Returns:
             时段余票列表
         """
-        time_slots = self.ticket_repo.get_time_slots_by_scenic_id(scenic_id)
+        # 如果没有指定日期，默认为当天
+        if reservation_date is None:
+            reservation_date = date.today()
+        
+        time_slots = self.ticket_repo.get_time_slots_by_scenic_id(scenic_id, reservation_date)
         
         return [
             TicketTimeSlotResponse(
@@ -57,12 +64,18 @@ class TicketService:
             购票响应
         """
         try:
-            # 1. 查询时段信息，验证余票是否充足
-            time_slot = self.ticket_repo.get_time_slot_by_id(request.time_slot_id)
+            # 1. 根据景点ID、日期和时间段查询时段信息，验证余票是否充足
+            time_slot = self.ticket_repo.get_time_slot_by_date_and_time(
+                request.scenic_id,
+                request.ticket_date,
+                request.start_time,
+                request.end_time
+            )
+            
             if not time_slot:
                 return PurchaseTicketResponse(
                     success=False,
-                    message="时段信息不存在"
+                    message="该时段不存在或已关闭预约"
                 )
             
             if time_slot['remaining_quota'] < request.ticket_quantity:
@@ -73,7 +86,7 @@ class TicketService:
             
             # 2. 更新时段余票数量
             updated_rows = self.ticket_repo.update_time_slot_quota(
-                request.time_slot_id, 
+                time_slot['id'], 
                 request.ticket_quantity
             )
             
@@ -85,11 +98,30 @@ class TicketService:
             
             # 3. 生成订单号
             order_no = self._generate_order_no()
+            order_time = datetime.now()
             
             # 4. 计算总金额
             total_amount = request.ticket_price * request.ticket_quantity
             
-            # 5. 创建票务销售记录
+            # 5. 创建订单记录
+            order_id = str(uuid.uuid4())
+            order_data = {
+                'id': order_id,
+                'order_no': order_no,
+                'user_id': request.user_id,
+                'scenic_id': request.scenic_id,
+                'scenic_name': request.scenic_name,
+                'order_title': request.order_title,
+                'order_price': total_amount,
+                'ticket_quantity': request.ticket_quantity,
+                'reschedule_limit': 1,  # 默认改签次数上限为1
+                'reschedule_used': 0,
+                'order_time': order_time,
+                'order_status': 2  # 2-已支付
+            }
+            self.order_repo.create_order(order_data)
+            
+            # 6. 创建票务销售记录
             sales_id = str(uuid.uuid4())
             sales_data = {
                 'id': sales_id,
@@ -98,22 +130,26 @@ class TicketService:
                 'channel_name': request.channel_name,
                 'scenic_id': request.scenic_id,
                 'scenic_name': request.scenic_name,
-                'ticket_type': request.ticket_type,
+                'ticket_type': 1,  # 默认为成人票
                 'ticket_price': request.ticket_price,
                 'ticket_quantity': request.ticket_quantity,
                 'total_amount': total_amount,
                 'payment_status': 1,  # 1-已支付
-                'payment_time': datetime.now(),
+                'payment_time': order_time,
                 'settlement_status': 1  # 1-未分账
             }
             self.ticket_repo.create_ticket_sales(sales_data)
             
-            # 6. 生成电子票凭证（根据购票数量生成多张）
+            # 7. 生成电子票凭证（根据购票数量和游客信息生成多张）
             electronic_tickets = []
             for i in range(request.ticket_quantity):
                 ticket_id = str(uuid.uuid4())
                 verification_code = self._generate_verification_code(order_no, i)
                 qr_code_url = self._generate_qr_code_url(ticket_id, verification_code)
+                
+                # 计算有效期：从票日期开始，到票日期结束
+                valid_start_date = request.ticket_date
+                valid_end_date = request.ticket_date
                 
                 ticket_data = {
                     'id': ticket_id,
@@ -121,20 +157,25 @@ class TicketService:
                     'ticket_id': time_slot['ticket_id'],
                     'qr_code_url': qr_code_url,
                     'verification_code': verification_code,
-                    'valid_start_date': request.valid_start_date,
-                    'valid_end_date': request.valid_end_date,
+                    'valid_start_date': valid_start_date,
+                    'valid_end_date': valid_end_date,
                     'verification_status': 1,  # 1-未核销
                     'refund_status': 1  # 1-未退款
                 }
                 self.ticket_repo.create_electronic_ticket(ticket_data)
                 
-                electronic_tickets.append({
+                # 添加游客信息到电子票响应中
+                tourist_info = request.tourists[i] if i < len(request.tourists) else None
+                ticket_info = {
                     'ticket_id': ticket_id,
                     'verification_code': verification_code,
                     'qr_code_url': qr_code_url,
-                    'valid_start_date': str(request.valid_start_date),
-                    'valid_end_date': str(request.valid_end_date)
-                })
+                    'valid_start_date': str(valid_start_date),
+                    'valid_end_date': str(valid_end_date),
+                    'tourist_name': tourist_info.name if tourist_info else '',
+                    'tourist_phone': tourist_info.phone if tourist_info else ''
+                }
+                electronic_tickets.append(ticket_info)
             
             return PurchaseTicketResponse(
                 success=True,

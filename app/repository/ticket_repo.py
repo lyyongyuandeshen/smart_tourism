@@ -10,16 +10,34 @@ class TicketRepository(BaseRepository):
     def __init__(self, pool: pooling.MySQLConnectionPool):
         super().__init__(pool)
     
-    def get_time_slots_by_scenic_id(self, scenic_id: str) -> List[Dict[str, Any]]:
-        """根据景点ID查询所有时段的余票信息"""
-        query = """
-            SELECT id, ticket_id, scenic_id, reservation_date, start_time, end_time,
-                   total_quota, used_quota, remaining_quota, create_time, update_time
-            FROM t_ticket_time_slot
-            WHERE scenic_id = %s AND remaining_quota > 0
-            ORDER BY reservation_date, start_time
+    def get_time_slots_by_scenic_id(self, scenic_id: str, reservation_date: Optional[date] = None) -> List[Dict[str, Any]]:
+        """根据景点ID查询所有时段的余票信息
+        
+        Args:
+            scenic_id: 景点ID
+            reservation_date: 预约日期，为空则查询所有日期
+            
+        Returns:
+            时段余票列表
         """
-        return self.execute_query(query, (scenic_id,))
+        if reservation_date:
+            query = """
+                SELECT id, ticket_id, scenic_id, reservation_date, start_time, end_time,
+                       total_quota, used_quota, remaining_quota, create_time, update_time
+                FROM t_ticket_time_slot
+                WHERE scenic_id = %s AND reservation_date = %s AND remaining_quota > 0
+                ORDER BY start_time
+            """
+            return self.execute_query(query, (scenic_id, reservation_date))
+        else:
+            query = """
+                SELECT id, ticket_id, scenic_id, reservation_date, start_time, end_time,
+                       total_quota, used_quota, remaining_quota, create_time, update_time
+                FROM t_ticket_time_slot
+                WHERE scenic_id = %s AND remaining_quota > 0
+                ORDER BY reservation_date, start_time
+            """
+            return self.execute_query(query, (scenic_id,))
     
     def get_time_slot_by_id(self, time_slot_id: str) -> Optional[Dict[str, Any]]:
         """根据时段ID查询时段信息"""
@@ -30,6 +48,29 @@ class TicketRepository(BaseRepository):
             WHERE id = %s
         """
         result = self.execute_query(query, (time_slot_id,))
+        return result[0] if result else None
+    
+    def get_time_slot_by_date_and_time(self, scenic_id: str, reservation_date: date, 
+                                       start_time: str, end_time: str) -> Optional[Dict[str, Any]]:
+        """根据景点ID、日期和时间段查询时段信息
+        
+        Args:
+            scenic_id: 景点ID
+            reservation_date: 预约日期
+            start_time: 开始时间（格式：HH:MM）
+            end_time: 结束时间（格式：HH:MM）
+            
+        Returns:
+            时段信息字典，不存在则返回None
+        """
+        query = """
+            SELECT id, ticket_id, scenic_id, reservation_date, start_time, end_time,
+                   total_quota, used_quota, remaining_quota, create_time, update_time
+            FROM t_ticket_time_slot
+            WHERE scenic_id = %s AND reservation_date = %s 
+                  AND start_time = %s AND end_time = %s
+        """
+        result = self.execute_query(query, (scenic_id, reservation_date, start_time, end_time))
         return result[0] if result else None
     
     def update_time_slot_quota(self, time_slot_id: str, quantity: int) -> int:

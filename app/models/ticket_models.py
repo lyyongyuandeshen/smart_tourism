@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field
 from decimal import Decimal
 
@@ -79,18 +79,26 @@ class TicketSales(BaseModel):
         from_attributes = True
 
 
+class TouristInfo(BaseModel):
+    """游客信息模型"""
+    name: str = Field(description="游客姓名")
+    phone: str = Field(description="游客电话")
+
+
 class PurchaseTicketRequest(BaseModel):
     """购票请求模型"""
+    user_id: str = Field(description="用户ID")
     scenic_id: str = Field(description="景点ID")
     scenic_name: str = Field(description="景点名称")
-    time_slot_id: str = Field(description="时段ID")
-    ticket_type: int = Field(description="票务类型：1-成人票，2-儿童票，3-老人票，4-联票")
-    ticket_quantity: int = Field(description="购票数量", ge=1)
-    ticket_price: Decimal = Field(description="单张票价")
+    order_title: str = Field(description="订单标题（票名）")
+    tourists: List[TouristInfo] = Field(description="游客信息列表")
+    ticket_date: date = Field(description="票日期")
+    start_time: str = Field(description="票开始时间，格式：HH:MM")
+    end_time: str = Field(description="票结束时间，格式：HH:MM")
+    ticket_price: Decimal = Field(description="单张票价", gt=0)
+    ticket_quantity: int = Field(description="票数量", ge=1)
     sales_channel: int = Field(default=1, description="销售渠道：1-官网，2-OTA平台，3-线下窗口，4-自助售票机")
     channel_name: str = Field(default="官网", description="渠道名称")
-    valid_start_date: date = Field(description="有效开始日期")
-    valid_end_date: date = Field(description="有效结束日期")
 
 
 class PurchaseTicketResponse(BaseModel):
