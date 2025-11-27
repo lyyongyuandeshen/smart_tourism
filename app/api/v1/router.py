@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import tickets, scenic_spots, facilities
+from app.api.v1.endpoints import tickets, scenic_spots, facilities, cultural_heritage
 
 api_router = APIRouter()
 
@@ -22,4 +22,11 @@ api_router.include_router(
     facilities.router,
     prefix="/facilities",
     tags=["facilities"]
+)
+
+# 注册文化遗产相关路由
+api_router.include_router(
+    cultural_heritage.router,
+    prefix="/cultural-heritage",
+    tags=["cultural-heritage"]
 )
