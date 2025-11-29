@@ -6,7 +6,8 @@ from app.models.cultural_heritage_models import (
     CulturalHeritageResponse,
     CulturalHeritageQueryRequest,
     CulturalHeritageListResponse,
-    CulturalHeritageUploadResponse
+    CulturalHeritageUploadResponse,
+    CulturalHeritageDeleteResponse
 )
 from app.services.cultural_heritage_service import CulturalHeritageService
 from app.config.config import config
@@ -147,4 +148,39 @@ async def upload_cultural_heritage(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"上传失败：{str(e)}"
+        )
+
+
+@router.delete("/{file_id}", response_model=CulturalHeritageDeleteResponse)
+async def delete_cultural_heritage(
+    file_id: str,
+    heritage_service: CulturalHeritageService = Depends(get_cultural_heritage_service)
+):
+    """
+    删除文化遗产信息
+    
+    Args:
+        file_id: 文件ID
+        heritage_service: 文化遗产服务实例
+        
+    Returns:
+        删除响应
+    """
+    try:
+        response = heritage_service.delete_cultural_heritage(file_id)
+        
+        if not response.success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND if "不存在" in response.message else status.HTTP_400_BAD_REQUEST,
+                detail=response.message
+            )
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"删除失败：{str(e)}"
         )

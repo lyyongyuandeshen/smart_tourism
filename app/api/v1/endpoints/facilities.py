@@ -6,7 +6,8 @@ from app.models.facility_models import (
     FacilityResponse,
     FacilityQueryRequest,
     FacilityListResponse,
-    FacilityUploadResponse
+    FacilityUploadResponse,
+    FacilityDeleteResponse
 )
 from app.services.facility_service import FacilityService
 from app.config.config import config
@@ -147,4 +148,39 @@ async def upload_facility(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"上传失败：{str(e)}"
+        )
+
+
+@router.delete("/{facility_id}", response_model=FacilityDeleteResponse)
+async def delete_facility(
+    facility_id: str,
+    facility_service: FacilityService = Depends(get_facility_service)
+):
+    """
+    删除设备信息
+    
+    Args:
+        facility_id: 设备ID
+        facility_service: 设备服务实例
+        
+    Returns:
+        删除响应
+    """
+    try:
+        response = facility_service.delete_facility(facility_id)
+        
+        if not response.success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND if "不存在" in response.message else status.HTTP_400_BAD_REQUEST,
+                detail=response.message
+            )
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"删除失败：{str(e)}"
         )

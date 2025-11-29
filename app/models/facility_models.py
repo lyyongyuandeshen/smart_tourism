@@ -55,3 +55,10 @@ class FacilityUploadResponse(BaseModel):
     success: bool
     message: str
     facility_id: Optional[str] = None
+
+
+class FacilityDeleteResponse(BaseModel):
+    """设备删除响应模型"""
+    success: bool
+    message: str
+    facility_id: Optional[str] = None

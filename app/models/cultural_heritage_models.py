@@ -51,3 +51,10 @@ class CulturalHeritageUploadResponse(BaseModel):
     success: bool
     message: str
     file_id: Optional[str] = None
+
+
+class CulturalHeritageDeleteResponse(BaseModel):
+    """文化遗产删除响应模型"""
+    success: bool
+    message: str
+    file_id: Optional[str] = None

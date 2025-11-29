@@ -7,7 +7,8 @@ from app.models.cultural_heritage_models import (
     CulturalHeritageCreate,
     CulturalHeritageQueryRequest,
     CulturalHeritageListResponse,
-    CulturalHeritageUploadResponse
+    CulturalHeritageUploadResponse,
+    CulturalHeritageDeleteResponse
 )
 
 
@@ -172,3 +173,44 @@ class CulturalHeritageService:
             
         except Exception as e:
             return None
+
+    def delete_cultural_heritage(self, file_id: str) -> CulturalHeritageDeleteResponse:
+        """
+        删除文化遗产信息
+        
+        Args:
+            file_id: 文件ID
+            
+        Returns:
+            删除响应
+        """
+        try:
+            # 检查文化遗产是否存在
+            existing_heritage = self.heritage_repo.get_cultural_heritage_by_id(file_id)
+            
+            if not existing_heritage:
+                return CulturalHeritageDeleteResponse(
+                    success=False,
+                    message=f"文化遗产不存在：{file_id}"
+                )
+            
+            # 删除文化遗产
+            rows_affected = self.heritage_repo.delete_cultural_heritage(file_id)
+            
+            if rows_affected > 0:
+                return CulturalHeritageDeleteResponse(
+                    success=True,
+                    message="文化遗产删除成功",
+                    file_id=file_id
+                )
+            else:
+                return CulturalHeritageDeleteResponse(
+                    success=False,
+                    message="文化遗产删除失败"
+                )
+                
+        except Exception as e:
+            return CulturalHeritageDeleteResponse(
+                success=False,
+                message=f"删除失败：{str(e)}"
+            )

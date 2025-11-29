@@ -7,7 +7,8 @@ from app.models.facility_models import (
     FacilityCreate,
     FacilityQueryRequest,
     FacilityListResponse,
-    FacilityUploadResponse
+    FacilityUploadResponse,
+    FacilityDeleteResponse
 )
 
 
@@ -181,3 +182,44 @@ class FacilityService:
             
         except Exception as e:
             return None
+
+    def delete_facility(self, facility_id: str) -> FacilityDeleteResponse:
+        """
+        删除设备信息
+        
+        Args:
+            facility_id: 设备ID
+            
+        Returns:
+            删除响应
+        """
+        try:
+            # 检查设备是否存在
+            existing_facility = self.facility_repo.get_facility_by_id(facility_id)
+            
+            if not existing_facility:
+                return FacilityDeleteResponse(
+                    success=False,
+                    message=f"设备不存在：{facility_id}"
+                )
+            
+            # 删除设备
+            rows_affected = self.facility_repo.delete_facility(facility_id)
+            
+            if rows_affected > 0:
+                return FacilityDeleteResponse(
+                    success=True,
+                    message="设备删除成功",
+                    facility_id=facility_id
+                )
+            else:
+                return FacilityDeleteResponse(
+                    success=False,
+                    message="设备删除失败"
+                )
+                
+        except Exception as e:
+            return FacilityDeleteResponse(
+                success=False,
+                message=f"删除失败：{str(e)}"
+            )
