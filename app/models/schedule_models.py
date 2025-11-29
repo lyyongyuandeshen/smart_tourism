@@ -187,6 +187,76 @@ class BatchScheduleCreateResponse(BaseModel):
     schedule_ids: List[int] = Field(default_factory=list, description="创建的排班ID列表")
 
 
+# ==================== 手动排班模型 ====================
+class ManualScheduleItem(BaseModel):
+    """手动排班项"""
+    schedule_date: date = Field(description="排班日期")
+    shift_id: int = Field(description="班次ID")
+    position_id: int = Field(description="岗位ID")
+    employee_ids: List[int] = Field(description="员工ID列表")
+    leader_employee_id: Optional[int] = Field(None, description="负责人员工ID")
+    notes: Optional[str] = Field(None, description="备注")
+
+
+class ManualScheduleCreate(BaseModel):
+    """手动排班创建请求模型"""
+    schedules: List[ManualScheduleItem] = Field(description="排班列表")
+    override_existing: bool = Field(False, description="是否覆盖已存在的排班")
+
+
+class ManualScheduleCreateResponse(BaseModel):
+    """手动排班创建响应模型"""
+    success: bool
+    message: str
+    created_count: int = Field(0, description="成功创建的排班数量")
+    updated_count: int = Field(0, description="更新的排班数量")
+    skipped_count: int = Field(0, description="跳过的排班数量")
+    schedule_ids: List[int] = Field(default_factory=list, description="创建/更新的排班ID列表")
+    details: List[str] = Field(default_factory=list, description="详细信息")
+
+
+# ==================== 自动排班模型 ====================
+class AutoScheduleRule(BaseModel):
+    """自动排班规则"""
+    position_id: int = Field(description="岗位ID")
+    required_employees: int = Field(description="所需员工数量")
+    preferred_shift_ids: List[int] = Field(description="优先班次ID列表")
+    exclude_employee_ids: List[int] = Field(default_factory=list, description="排除的员工ID列表")
+    require_leader: bool = Field(True, description="是否需要负责人")
+
+
+class AutoScheduleConfig(BaseModel):
+    """自动排班配置"""
+    start_date: date = Field(description="开始日期")
+    end_date: date = Field(description="结束日期")
+    rules: List[AutoScheduleRule] = Field(description="排班规则列表")
+    max_consecutive_days: int = Field(5, description="最大连续工作天数")
+    min_rest_hours: int = Field(12, description="最小休息时间（小时）")
+    balance_workload: bool = Field(True, description="是否均衡工作负荷")
+    override_existing: bool = Field(False, description="是否覆盖已存在的排班")
+
+
+class AutoSchedulePreview(BaseModel):
+    """自动排班预览"""
+    schedule_date: date = Field(description="排班日期")
+    position_name: str = Field(description="岗位名称")
+    shift_name: str = Field(description="班次名称")
+    employee_names: List[str] = Field(description="员工姓名列表")
+    leader_name: Optional[str] = Field(None, description="负责人姓名")
+    conflict_reason: Optional[str] = Field(None, description="冲突原因")
+
+
+class AutoScheduleCreateResponse(BaseModel):
+    """自动排班创建响应模型"""
+    success: bool
+    message: str
+    preview_mode: bool = Field(False, description="是否为预览模式")
+    created_count: int = Field(0, description="成功创建的排班数量")
+    conflict_count: int = Field(0, description="冲突的排班数量")
+    schedule_previews: List[AutoSchedulePreview] = Field(default_factory=list, description="排班预览列表")
+    schedule_ids: List[int] = Field(default_factory=list, description="创建的排班ID列表")
+
+
 # ==================== 员工列表响应 ====================
 class EmployeeListResponse(BaseModel):
     """员工列表响应模型"""

@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from mysql.connector import pooling
 
 from app.repository.schedule_repo import ScheduleRepository
@@ -20,7 +20,12 @@ from app.models.schedule_models import (
     ShiftListResponse,
     CalendarScheduleItem,
     CalendarDaySchedule,
-    ScheduleCalendarResponse
+    ScheduleCalendarResponse,
+    ManualScheduleCreate,
+    ManualScheduleCreateResponse,
+    AutoScheduleConfig,
+    AutoScheduleCreateResponse,
+    AutoSchedulePreview
 )
 
 
@@ -496,6 +501,355 @@ class ScheduleService:
                 success=False,
                 message=f"删除失败：{str(e)}"
             )
+
+    # ==================== 手动排班功能 ====================
+
+    def manual_create_schedules(
+        self,
+        manual_request: ManualScheduleCreate
+    ) -> ManualScheduleCreateResponse:
+        """
+        手动创建排班
+        
+        Args:
+            manual_request: 手动排班请求
+            
+        Returns:
+            手动排班创建响应
+        """
+        try:
+            created_count = 0
+            updated_count = 0
+            skipped_count = 0
+            schedule_ids = []
+            details = []
+            
+            for schedule_item in manual_request.schedules:
+                try:
+                    # 检查是否已存在排班
+                    existing_schedule = None
+                    if self.schedule_repo.check_schedule_exists(
+                        schedule_item.schedule_date,
+                        schedule_item.position_id
+                    ):
+                        if manual_request.override_existing:
+                            # 获取现有排班ID进行更新
+                            schedules = self.schedule_repo.get_schedules_by_date_range(
+                                start_date=schedule_item.schedule_date,
+                                end_date=schedule_item.schedule_date,
+                                position_id=schedule_item.position_id
+                            )
+                            if schedules:
+                                existing_schedule = schedules[0]
+                        else:
+                            skipped_count += 1
+                            details.append(
+                                f"跳过 {schedule_item.schedule_date} {self._get_position_name(schedule_item.position_id)}：已存在排班"
+                            )
+                            continue
+                    
+                    if existing_schedule:
+                        # 更新现有排班
+                        schedule_id = existing_schedule['schedule_id']
+                        
+                        # 更新排班基本信息
+                        schedule_data = {
+                            'schedule_date': schedule_item.schedule_date,
+                            'shift_id': schedule_item.shift_id,
+                            'position_id': schedule_item.position_id
+                        }
+                        
+                        self.schedule_repo.update_schedule(schedule_id, schedule_data)
+                        
+                        # 删除旧的员工关联
+                        self.schedule_repo.delete_schedule_employees(schedule_id)
+                        
+                        updated_count += 1
+                        details.append(
+                            f"更新 {schedule_item.schedule_date} {self._get_position_name(schedule_item.position_id)}"
+                        )
+                    else:
+                        # 创建新排班
+                        schedule_data = {
+                            'schedule_date': schedule_item.schedule_date,
+                            'shift_id': schedule_item.shift_id,
+                            'position_id': schedule_item.position_id
+                        }
+                        
+                        schedule_id = self.schedule_repo.create_schedule(schedule_data)
+                        
+                        if schedule_id <= 0:
+                            details.append(
+                                f"创建失败 {schedule_item.schedule_date} {self._get_position_name(schedule_item.position_id)}"
+                            )
+                            continue
+                        
+                        created_count += 1
+                        details.append(
+                            f"创建 {schedule_item.schedule_date} {self._get_position_name(schedule_item.position_id)}"
+                        )
+                    
+                    # 添加员工关联
+                    for employee_id in schedule_item.employee_ids:
+                        is_leader = (employee_id == schedule_item.leader_employee_id)
+                        self.schedule_repo.add_schedule_employee(
+                            schedule_id,
+                            employee_id,
+                            is_leader
+                        )
+                    
+                    schedule_ids.append(schedule_id)
+                    
+                except Exception as item_error:
+                    details.append(
+                        f"处理失败 {schedule_item.schedule_date} {self._get_position_name(schedule_item.position_id)}：{str(item_error)}"
+                    )
+                    continue
+            
+            total_processed = created_count + updated_count
+            
+            return ManualScheduleCreateResponse(
+                success=total_processed > 0,
+                message=f"手动排班完成：创建 {created_count} 个，更新 {updated_count} 个，跳过 {skipped_count} 个",
+                created_count=created_count,
+                updated_count=updated_count,
+                skipped_count=skipped_count,
+                schedule_ids=schedule_ids,
+                details=details
+            )
+            
+        except Exception as e:
+            return ManualScheduleCreateResponse(
+                success=False,
+                message=f"手动排班失败：{str(e)}",
+                details=[f"系统错误：{str(e)}"]
+            )
+
+    # ==================== 自动排班功能 ====================
+
+    def auto_create_schedules(
+        self,
+        auto_config: AutoScheduleConfig,
+        preview_mode: bool = False
+    ) -> AutoScheduleCreateResponse:
+        """
+        自动创建排班
+        
+        Args:
+            auto_config: 自动排班配置
+            preview_mode: 是否为预览模式
+            
+        Returns:
+            自动排班创建响应
+        """
+        try:
+            # 获取所有员工
+            all_employees = self.schedule_repo.get_all_employees()
+            employee_map = {emp['employee_id']: emp for emp in all_employees}
+            
+            # 获取所有岗位和班次信息
+            all_positions = self.schedule_repo.get_all_positions()
+            position_map = {pos['position_id']: pos for pos in all_positions}
+            
+            all_shifts = self.schedule_repo.get_all_shifts()
+            shift_map = {shift['shift_id']: shift for shift in all_shifts}
+            
+            schedule_previews = []
+            created_count = 0
+            conflict_count = 0
+            schedule_ids = []
+            
+            # 按日期循环生成排班
+            current_date = auto_config.start_date
+            employee_workload = {emp_id: 0 for emp_id in employee_map.keys()}  # 工作负荷统计
+            employee_last_work_date = {}  # 员工最后工作日期
+            
+            while current_date <= auto_config.end_date:
+                # 为每个规则生成排班
+                for rule in auto_config.rules:
+                    try:
+                        # 检查是否已存在排班
+                        if self.schedule_repo.check_schedule_exists(current_date, rule.position_id):
+                            if not auto_config.override_existing:
+                                conflict_count += 1
+                                schedule_previews.append(AutoSchedulePreview(
+                                    schedule_date=current_date,
+                                    position_name=position_map.get(rule.position_id, {}).get('position_name', '未知岗位'),
+                                    shift_name='已存在排班',
+                                    employee_names=[],
+                                    conflict_reason='该岗位已有排班记录'
+                                ))
+                                continue
+                        
+                        # 选择班次（优先使用配置的班次）
+                        selected_shift_id = rule.preferred_shift_ids[0] if rule.preferred_shift_ids else 1
+                        shift_info = shift_map.get(selected_shift_id, {})
+                        
+                        # 智能选择员工
+                        selected_employees = self._select_employees_for_auto_schedule(
+                            rule=rule,
+                            current_date=current_date,
+                            employee_map=employee_map,
+                            employee_workload=employee_workload,
+                            employee_last_work_date=employee_last_work_date,
+                            auto_config=auto_config
+                        )
+                        
+                        if len(selected_employees) < rule.required_employees:
+                            conflict_count += 1
+                            schedule_previews.append(AutoSchedulePreview(
+                                schedule_date=current_date,
+                                position_name=position_map.get(rule.position_id, {}).get('position_name', '未知岗位'),
+                                shift_name=shift_info.get('shift_name', '未知班次'),
+                                employee_names=[employee_map[emp_id]['name'] for emp_id in selected_employees],
+                                conflict_reason=f'可用员工不足，需要 {rule.required_employees} 人，只找到 {len(selected_employees)} 人'
+                            ))
+                            continue
+                        
+                        # 选择负责人
+                        leader_employee_id = None
+                        if rule.require_leader and selected_employees:
+                            # 选择工作负荷最低的员工作为负责人
+                            leader_employee_id = min(selected_employees, key=lambda emp_id: employee_workload[emp_id])
+                        
+                        # 创建排班预览
+                        employee_names = [employee_map[emp_id]['name'] for emp_id in selected_employees]
+                        leader_name = employee_map[leader_employee_id]['name'] if leader_employee_id else None
+                        
+                        schedule_preview = AutoSchedulePreview(
+                            schedule_date=current_date,
+                            position_name=position_map.get(rule.position_id, {}).get('position_name', '未知岗位'),
+                            shift_name=shift_info.get('shift_name', '未知班次'),
+                            employee_names=employee_names,
+                            leader_name=leader_name
+                        )
+                        schedule_previews.append(schedule_preview)
+                        
+                        # 如果不是预览模式，实际创建排班
+                        if not preview_mode:
+                            # 创建排班记录
+                            schedule_data = {
+                                'schedule_date': current_date,
+                                'shift_id': selected_shift_id,
+                                'position_id': rule.position_id
+                            }
+                            
+                            schedule_id = self.schedule_repo.create_schedule(schedule_data)
+                            
+                            if schedule_id > 0:
+                                # 添加员工关联
+                                for employee_id in selected_employees:
+                                    is_leader = (employee_id == leader_employee_id)
+                                    self.schedule_repo.add_schedule_employee(
+                                        schedule_id,
+                                        employee_id,
+                                        is_leader
+                                    )
+                                
+                                schedule_ids.append(schedule_id)
+                                created_count += 1
+                                
+                                # 更新员工工作负荷和最后工作日期
+                                for employee_id in selected_employees:
+                                    employee_workload[employee_id] += 1
+                                    employee_last_work_date[employee_id] = current_date
+                        
+                    except Exception as rule_error:
+                        conflict_count += 1
+                        schedule_previews.append(AutoSchedulePreview(
+                            schedule_date=current_date,
+                            position_name=position_map.get(rule.position_id, {}).get('position_name', '未知岗位'),
+                            shift_name='处理失败',
+                            employee_names=[],
+                            conflict_reason=f'处理错误：{str(rule_error)}'
+                        ))
+                        continue
+                
+                # 移动到下一天
+                current_date = current_date + timedelta(days=1)
+            
+            success_message = f"自动排班{'预览' if preview_mode else '完成'}：生成 {len(schedule_previews)} 个排班方案"
+            if conflict_count > 0:
+                success_message += f"，其中 {conflict_count} 个存在冲突"
+            
+            return AutoScheduleCreateResponse(
+                success=True,
+                message=success_message,
+                preview_mode=preview_mode,
+                created_count=created_count,
+                conflict_count=conflict_count,
+                schedule_previews=schedule_previews,
+                schedule_ids=schedule_ids
+            )
+            
+        except Exception as e:
+            return AutoScheduleCreateResponse(
+                success=False,
+                message=f"自动排班失败：{str(e)}",
+                preview_mode=preview_mode,
+                schedule_previews=[]
+            )
+
+    def _select_employees_for_auto_schedule(
+        self,
+        rule,
+        current_date: date,
+        employee_map: dict,
+        employee_workload: dict,
+        employee_last_work_date: dict,
+        auto_config: AutoScheduleConfig
+    ) -> List[int]:
+        """
+        为自动排班智能选择员工
+        
+        Args:
+            rule: 排班规则
+            current_date: 当前日期
+            employee_map: 员工映射
+            employee_workload: 员工工作负荷
+            employee_last_work_date: 员工最后工作日期
+            auto_config: 自动排班配置
+            
+        Returns:
+            选中的员工ID列表
+        """
+        available_employees = []
+        
+        for employee_id, employee_info in employee_map.items():
+            # 排除指定的员工
+            if employee_id in rule.exclude_employee_ids:
+                continue
+            
+            # 检查连续工作天数限制
+            if employee_id in employee_last_work_date:
+                last_work_date = employee_last_work_date[employee_id]
+                days_diff = (current_date - last_work_date).days
+                
+                # 如果连续工作天数超过限制，需要休息
+                if days_diff == 1 and employee_workload[employee_id] >= auto_config.max_consecutive_days:
+                    continue
+            
+            # 检查是否有其他冲突（这里可以扩展更多业务规则）
+            
+            available_employees.append(employee_id)
+        
+        # 如果启用工作负荷均衡，按工作负荷排序
+        if auto_config.balance_workload:
+            available_employees.sort(key=lambda emp_id: employee_workload[emp_id])
+        
+        # 返回所需数量的员工
+        return available_employees[:rule.required_employees]
+
+    def _get_position_name(self, position_id: int) -> str:
+        """获取岗位名称"""
+        try:
+            positions = self.schedule_repo.get_all_positions()
+            for position in positions:
+                if position['position_id'] == position_id:
+                    return position['position_name']
+            return f"岗位{position_id}"
+        except:
+            return f"岗位{position_id}"
 
     def get_schedule_detail(self, schedule_id: int) -> Optional[ScheduleDetail]:
         """
