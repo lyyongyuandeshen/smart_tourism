@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import tickets, scenic_spots, facilities, cultural_heritage, schedules
+from app.api.v1.endpoints import tickets, scenic_spots, facilities, cultural_heritage, schedules, merchant_applications
 
 api_router = APIRouter()
 
@@ -36,4 +36,11 @@ api_router.include_router(
     schedules.router,
     prefix="/schedules",
     tags=["schedules"]
+)
+
+# 注册商户申请管理相关路由
+api_router.include_router(
+    merchant_applications.router,
+    prefix="/merchant-applications",
+    tags=["merchant-applications"]
 )
