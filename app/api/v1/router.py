@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import tickets, scenic_spots, facilities, cultural_heritage, schedules, merchant_applications
+from app.api.v1.endpoints import tickets, scenic_spots, facilities, cultural_heritage, schedules, merchant_applications, member_levels
 
 api_router = APIRouter()
 
@@ -43,4 +43,11 @@ api_router.include_router(
     merchant_applications.router,
     prefix="/merchant-applications",
     tags=["merchant-applications"]
+)
+
+# 注册会员等级管理相关路由
+api_router.include_router(
+    member_levels.router,
+    prefix="/member-levels",
+    tags=["member-levels"]
 )
