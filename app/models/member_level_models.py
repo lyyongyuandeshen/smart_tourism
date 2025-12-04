@@ -30,7 +30,7 @@ class MemberLevelUpdate(BaseModel):
 
 class MemberLevelResponse(MemberLevelBase):
     """会员等级响应模型"""
-    id: str
+    id: int
     is_deleted: int = Field(0, description="是否删除（0-未删除，1-已删除）")
     create_time: datetime
     update_time: datetime
