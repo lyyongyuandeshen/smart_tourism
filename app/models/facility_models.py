@@ -1,19 +1,28 @@
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, Field
+from typing import Optional, Literal
+from pydantic import BaseModel, Field, validator
 from decimal import Decimal
 
 
 class FacilityBase(BaseModel):
     """景区设备基础模型"""
-    facility_id: str = Field(description="设备唯一编号")
-    facility_name: str = Field(description="设备名称")
-    category: str = Field(description="分类：洗手间、儿童乐园、休息区、轮椅通道、互动体验、便民点、避难点、风景名胜、紧急出口")
-    icon: Optional[str] = Field(None, description="图标URL或图标类名")
-    position_desc: str = Field(description="位置描述")
-    longitude: Optional[Decimal] = Field(None, description="经度")
-    latitude: Optional[Decimal] = Field(None, description="纬度")
-    status: str = Field(description="状态：正常、维修、暂停、已拆除")
+    facility_id: str = Field(description="设备唯一编号", max_length=50)
+    facility_name: str = Field(description="设备名称", max_length=50)
+    category: Literal["洗手间", "儿童乐园", "休息区", "轮椅通道", "互动体验", "便民点", "避难点", "风景名胜", "紧急出口"] = Field(description="分类")
+    icon: Optional[str] = Field(None, description="图标URL或图标类名", max_length=100)
+    position_desc: str = Field(description="位置描述", max_length=100)
+    longitude: Optional[Decimal] = Field(None, description="经度", ge=-180, le=180)
+    latitude: Optional[Decimal] = Field(None, description="纬度", ge=-90, le=90)
+    status: Literal["正常", "维修", "暂停", "已拆除"] = Field(description="状态")
+    
+    @validator('longitude', 'latitude')
+    def validate_coordinates(cls, v):
+        """验证坐标精度"""
+        if v is not None:
+            # 确保精度不超过7位小数
+            if v.as_tuple().exponent < -7:
+                raise ValueError('坐标精度不能超过7位小数')
+        return v
 
 
 class FacilityCreate(FacilityBase):

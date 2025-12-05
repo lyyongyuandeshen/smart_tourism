@@ -144,6 +144,12 @@ async def upload_facility(
         
     except HTTPException:
         raise
+    except ValueError as e:
+        # Pydantic验证错误
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"数据验证失败：{str(e)}"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

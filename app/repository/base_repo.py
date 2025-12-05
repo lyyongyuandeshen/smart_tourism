@@ -50,7 +50,28 @@ class BaseRepository:
                 conn.close()
     
     def execute_insert(self, query: str, params: tuple = None) -> int:
-        """执行插入操作并返回最后插入的ID"""
+        """执行插入操作并返回影响的行数"""
+        conn = None
+        cursor = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(query, params or ())
+            conn.commit()
+            # 对于非自增主键表，返回影响的行数更有意义
+            return cursor.rowcount
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            raise e
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
+    def execute_insert_with_id(self, query: str, params: tuple = None) -> int:
+        """执行插入操作并返回最后插入的自增ID（仅用于自增主键表）"""
         conn = None
         cursor = None
         try:
