@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import tickets, scenic_spots, facilities, cultural_heritage, schedules, merchant_applications, member_levels
+from app.api.v1.endpoints import tickets, scenic_spots, facilities, cultural_heritage, schedules, merchant_applications, \
+    member_levels, sso
 
 api_router = APIRouter()
 
@@ -50,4 +51,11 @@ api_router.include_router(
     member_levels.router,
     prefix="/member-levels",
     tags=["member-levels"]
+)
+
+# 注册SSO相关路由
+api_router.include_router(
+    sso.router,
+    prefix="/sso",
+    tags=["sso"]
 )

@@ -23,6 +23,76 @@
 - 时段配额更新
 - 时段删除（单个/批量）
 
+### 4. SSO单点登录集成
+- 支持思明项目SSO集成
+- 获取授权码
+- 获取授权Token
+- 获取用户信息
+- 一键登录（使用code直接获取用户信息）
+
+## SSO集成详细说明
+
+### SSO集成流程
+
+1. **前端获取授权URL**
+   ```bash
+   GET /api/v1/sso/auth-url?callback_url=http://127.0.0.1:8000/callback
+   ```
+
+2. **用户授权**
+   - 前端重定向用户到授权URL
+   - 用户在SSO页面完成登录授权
+   - 授权成功后跳转回callback_url并携带授权码
+
+3. **后端处理登录**
+   ```bash
+   POST /api/v1/sso/login
+   {
+     "code": "授权码",
+     "client_id": "qoos2xwcpl0svmf7",
+     "client_secret": "b5hjzmqc62u0wx861q89t8mcjvh9f5gu"
+   }
+   ```
+
+### SSO接口列表
+
+**Base URL**: `http://localhost:8090/api/v1/sso`
+
+- `GET /auth-url` - 获取SSO授权URL
+- `GET /redirect` - 直接重定向到SSO授权页面
+- `POST /access-token` - 获取访问令牌
+- `POST /user-info` - 获取用户信息
+- `POST /login` - SSO一键登录（推荐）
+- `GET /callback` - SSO授权回调处理
+- `POST /validate-token` - 验证访问令牌
+- `GET /config` - 获取SSO配置信息
+
+### 测试SSO功能
+
+```bash
+# 运行SSO接口测试
+python test_sso_api.py
+```
+
+### SSO配置信息
+
+- **授权服务地址**: `https://test-api.smdata.com.cn/wisdomSimingApp/sso`
+- **API服务地址**: `http://115.190.160.216/api/v1`
+- **客户端ID**: `qoos2xwcpl0svmf7`
+- **客户端密钥**: `b5hjzmqc62u0wx861q89t8mcjvh9f5gu`
+
+### 用户信息字段说明
+
+SSO登录成功后返回的用户信息包含：
+- `user_id`: 用户唯一标识
+- `username`: 用户名
+- `real_name`: 真实姓名
+- `mobile`: 手机号
+- `email`: 邮箱地址
+- `credit_id`: 身份证号
+- `company`: 公司信息
+- `departments`: 部门信息列表
+
 ## 环境要求
 
 - Python 3.8+
