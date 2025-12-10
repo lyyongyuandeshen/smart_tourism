@@ -1,0 +1,1 @@
+import{d as a,o,b as s,g as e,D as n}from"./index-9ac666b4.js";const _={class:"p-6"},d=a({__name:"navigation",setup(c){return(i,t)=>(o(),s("div",_,t[0]||(t[0]=[e("h1",{class:"text-2xl font-bold mb-6"},"导航导览",-1),e("div",{class:"bg-white rounded-lg shadow p-4"},[e("p",null,"这里是导航导览页面内容")],-1)])))}});const p=n(d,[["__scopeId","data-v-5f1a15e7"]]);export{p as default};
