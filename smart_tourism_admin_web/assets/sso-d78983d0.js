@@ -1,0 +1,1 @@
+import{b9 as o}from"./index-fc2ca07d.js";function s(t){return o({url:"/api/v1/sso/auth-url",method:"get",params:{callback_url:t}})}function a(t){return o({url:"/api/v1/sso/login",method:"post",data:t})}function e(){return o({url:"/api/v1/sso/config",method:"get"})}export{s as a,e as g,a as s};

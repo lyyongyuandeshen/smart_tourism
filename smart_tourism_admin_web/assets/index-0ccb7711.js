@@ -1,0 +1,1 @@
+import{d as n,n as o,o as c,c as p,a6 as r,a8 as _,b6 as d}from"./index-fc2ca07d.js";const m=n({__name:"index",props:{type:{},content:{}},setup(t){const s=t,a=o(()=>`mt-tag mt-tag__${s.type||"success"}`);return(e,l)=>(c(),p("span",{class:_(a.value)},r(e.content),3))}}),u=d(m,[["__scopeId","data-v-bda7dd5d"]]);export{u as M};
