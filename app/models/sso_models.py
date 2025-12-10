@@ -12,8 +12,6 @@ class SSOAuthRequest(BaseModel):
 class AccessTokenRequest(BaseModel):
     """获取访问令牌请求模型"""
     code: str = Field(..., description="授权码")
-    client_id: str = Field(..., description="客户端标识")
-    client_secret: str = Field(..., description="客户端密钥")
 
 
 class UserInfoRequest(BaseModel):
@@ -25,8 +23,6 @@ class UserInfoRequest(BaseModel):
 class SSOLoginRequest(BaseModel):
     """SSO一键登录请求模型"""
     code: str = Field(..., description="授权码")
-    client_id: str = Field(..., description="客户端标识")
-    client_secret: str = Field(..., description="客户端密钥")
 
 
 class UserDept(BaseModel):

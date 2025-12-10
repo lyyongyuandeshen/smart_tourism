@@ -142,21 +142,6 @@ async def sso_login(request: SSOLoginRequest):
         SSOLoginResponse: 登录响应
     """
     try:
-        # 验证客户端信息
-        if request.client_id != sso_service.client_id:
-            return SSOLoginResponse(
-                success=False,
-                message="客户端标识不正确",
-                data=None
-            )
-        
-        if request.client_secret != sso_service.client_secret:
-            return SSOLoginResponse(
-                success=False,
-                message="客户端密钥不正确",
-                data=None
-            )
-        
         # 执行SSO登录
         result = await sso_service.sso_login(request.code)
         
