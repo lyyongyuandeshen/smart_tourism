@@ -4,6 +4,7 @@ from venv import logger
 import redis
 from dotenv import load_dotenv
 from mysql.connector import pooling
+import aiomysql
 
 from app.config.mysql_config import MySqlConfig
 from app.config.redis_config import RedisConfig
@@ -20,6 +21,7 @@ class ConfigManager:
 
     def __init__(self):
         self._mysql_pool: pooling.MySQLConnectionPool = None
+        self._aiomysql_pool: aiomysql.Pool = None
         self._redis_pool: redis.ConnectionPool = None
         self._mysql_config = self._load_mysql_config()
 
@@ -57,6 +59,10 @@ class ConfigManager:
     def get_mysql_pool(self) -> pooling.MySQLConnectionPool:
         """获取MySQL连接池"""
         return self._mysql_pool
+    
+    def get_aiomysql_pool(self) -> aiomysql.Pool:
+        """获取aiomysql异步连接池"""
+        return self._aiomysql_pool
 
     def get_redis_client(self) -> redis.Redis:
         """获取Redis客户端实例"""
@@ -105,6 +111,32 @@ class ConfigManager:
             logger.error(f"init mysql connection pool failed: {str(e)}")
             raise
 
+    async def _init_aiomysql_pool(self):
+        """初始化aiomysql异步连接池"""
+        mysql_conf: MySqlConfig = self.get_mysql_config()
+        if not mysql_conf:
+            raise ValueError("MySQL configuration is missing")
+        
+        try:
+            self._aiomysql_pool = await aiomysql.create_pool(
+                host=mysql_conf.host,
+                port=mysql_conf.port,
+                user=mysql_conf.user,
+                password=mysql_conf.password,
+                db=mysql_conf.database,
+                minsize=1,
+                maxsize=mysql_conf.pool_size,
+                autocommit=mysql_conf.autocommit,
+                charset=mysql_conf.charset
+            )
+            logger.info(
+                f"init aiomysql connection pool, host: {mysql_conf.host}, "
+                f"port: {mysql_conf.port}, db: {mysql_conf.database}"
+            )
+        except Exception as e:
+            logger.error(f"init aiomysql connection pool failed: {str(e)}")
+            raise
+    
     def inject(self):
         """注入配置管理器"""
         # self._init_redis_config()
