@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import tickets, scenic_spots, facilities, cultural_heritage, schedules, merchant_applications, \
-    member_levels, sso, chat, work_orders
+    member_levels, sso
 
 api_router = APIRouter()
 
@@ -58,18 +58,4 @@ api_router.include_router(
     sso.router,
     prefix="/sso",
     tags=["sso"]
-)
-
-# 注册聊天相关路由
-api_router.include_router(
-    chat.router,
-    prefix="/chat",
-    tags=["chat"]
-)
-
-# 注册工单管理相关路由
-api_router.include_router(
-    work_orders.router,
-    prefix="/work-orders",
-    tags=["work-orders"]
 )
