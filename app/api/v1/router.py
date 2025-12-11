@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import tickets, scenic_spots, facilities, cultural_heritage, schedules, merchant_applications, \
-    member_levels, sso, chat, work_orders
+    member_levels, sso, chat, work_orders, tos
 
 api_router = APIRouter()
 
@@ -72,4 +72,11 @@ api_router.include_router(
     work_orders.router,
     prefix="/work-orders",
     tags=["工单管理"]
+)
+
+# 注册TOS上传相关路由
+api_router.include_router(
+    tos.router,
+    prefix="/tos",
+    tags=["tos"]
 )

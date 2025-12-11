@@ -7,6 +7,7 @@ from mysql.connector import pooling
 
 from app.config.mysql_config import MySqlConfig
 from app.config.redis_config import RedisConfig
+from app.config.tos_config import TosConfig
 
 
 class ConfigManager:
@@ -16,12 +17,15 @@ class ConfigManager:
         2、redis
         3、kafka
         4、agent配置
+        5、TOS对象存储
     """
 
     def __init__(self):
         self._mysql_pool: pooling.MySQLConnectionPool = None
         self._redis_pool: redis.ConnectionPool = None
         self._mysql_config = self._load_mysql_config()
+        self._tos_config = self._load_tos_config()
+        self._tos_service = None
 
     def _load_mysql_config(self) -> MySqlConfig:
         """从环境变量加载MySQL配置"""
@@ -62,19 +66,30 @@ class ConfigManager:
         """获取Redis客户端实例"""
         return self._redis_client
 
-    def _init_redis_config(self):
-        """初始化redis配置信息，创建redis连接池"""
-        self._redis_config = self._load_redis_config()
-        # 创建redis连接池
-        redis_pool = redis.ConnectionPool(
-            host=self._redis_config.host,
-            port=self._redis_config.port,
-            password=self._redis_config.password,
-            db=self._redis_config.db,
-            max_connections=self._redis_config.max_connections
+    def get_tos_config(self) -> TosConfig:
+        """获取TOS配置"""
+        if self._tos_config is None:
+            self._tos_config = self._load_tos_config()
+        return self._tos_config
+
+    def get_tos_service(self):
+        """获取TOS服务实例"""
+        if self._tos_service is None:
+            # 延迟导入避免循环依赖
+            from app.services.tos_service import TosService
+            tos_config = self.get_tos_config()
+            self._tos_service = TosService(tos_config)
+        return self._tos_service
+
+    def _load_tos_config(self) -> TosConfig:
+        """从环境变量加载TOS配置"""
+        return TosConfig(
+            endpoint=os.getenv("endpoint"),
+            access_key=os.getenv("access_key"),
+            secret_key=os.getenv("secret_key"),
+            bucket_name=os.getenv("bucket_name"),
+            region=os.getenv("region"),
         )
-        # 获取一个实例对象，全局只有一个，可能存在并发瓶颈，后续可优化多个连接client
-        self._redis_client = redis.Redis(connection_pool=redis_pool)
 
     def _init_mysql_pool(self, database=None):
         """初始化MySQL配置信息，创建连接池"""
