@@ -1,0 +1,80 @@
+-- 工单主表
+CREATE TABLE IF NOT EXISTS `tbkf_work_order_info` (
+  `order_id` varchar(30) NOT NULL COMMENT '工单ID',
+  `order_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '工单编号',
+  `title` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '工单标题',
+  `detail` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci COMMENT '工单内容',
+  `priority` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT 'normal' COMMENT '优先级：low-低, normal-普通, high-高, urgent-紧急',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT 'pending' COMMENT '工单状态：pending-待处理, processing-处理中, resolved-已解决, closed-已关闭, cancelled-已取消',
+  `creator_user_id` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '创建人ID',
+  `creator_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '创建人姓名',
+  `assignee_id` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '当前处理人ID',
+  `assignee_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '当前处理人姓名',
+  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '工单分类',
+  `current_node_id` varchar(30) NOT NULL COMMENT '节点ID',
+  `timeount` datetime DEFAULT NULL COMMENT '超时时间',
+  `tags` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '标签，多个用逗号分隔',
+  `expected_time` datetime DEFAULT NULL COMMENT '预期完成时间',
+  `actual_time` datetime DEFAULT NULL COMMENT '实际完成时间',
+  `del_flag` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
+  `creator_id` varchar(30)  COMMENT '创建者id',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `creator_name` varchar(60)  COMMENT '创建人名称',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`order_id`) USING BTREE,
+  UNIQUE KEY `uk_order_no` (`order_no`),
+  KEY `idx_creator_id` (`creator_user_id`),
+  KEY `idx_assignee_id` (`assignee_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_priority` (`priority`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='工单信息表';
+
+-- 工单节点表
+CREATE TABLE IF NOT EXISTS `tbkf_work_order_node_info` (
+  `node_id` varchar(30) NOT NULL COMMENT '节点ID',
+  `order_id` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '工单ID',
+  `node_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '节点名称',
+  `node_type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT 'process' COMMENT '节点类型：create-创建, process-处理, transfer-转移, resolve-解决, close-关闭',
+  `handler_id` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '处理人ID',
+  `handler_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '处理人姓名',
+  `from_assignee_id` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '转移前处理人ID（仅转移节点）',
+  `to_assignee_id` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '转移后处理人ID（仅转移节点）',
+  `node_content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci COMMENT '节点处理内容',
+  `node_status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT 'completed' COMMENT '节点状态：pending-待处理, processing-处理中, completed-已完成, timeout-超时',
+  `start_time` datetime DEFAULT NULL COMMENT '节点开始时间',
+  `end_time` datetime DEFAULT NULL COMMENT '节点结束时间',
+  `expected_duration` int DEFAULT NULL COMMENT '预期处理时长（分钟）',
+  `actual_duration` int DEFAULT NULL COMMENT '实际处理时长（分钟）',
+  `is_timeout` tinyint DEFAULT 0 COMMENT '是否超时：0-否, 1-是',
+  `timeout_reminder` tinyint DEFAULT 0 COMMENT '是否已发送超时提醒：0-否, 1-是',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`node_id`) USING BTREE,
+  KEY `idx_order_id` (`order_id`),
+  KEY `idx_handler_id` (`handler_id`),
+  KEY `idx_node_status` (`node_status`),
+  KEY `idx_create_time` (`create_time`),
+  CONSTRAINT `fk_node_order` FOREIGN KEY (`order_id`) REFERENCES `tbkf_work_order_info` (`order_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='工单节点信息表';
+
+-- 工单反馈表
+CREATE TABLE IF NOT EXISTS `tbkf_work_order_feedback_info` (
+  `feedback_id` varchar(30) NOT NULL COMMENT '反馈ID',
+  `order_id` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '工单ID',
+  `user_id` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '反馈用户ID',
+  `user_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '反馈用户姓名',
+  `feedback_type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT 'result' COMMENT '反馈类型：result-处理结果反馈, evaluation-服务质量评价',
+  `feedback_content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci COMMENT '反馈内容',
+  `satisfaction_score` int DEFAULT NULL COMMENT '满意度评分：1-5分',
+  `evaluation_tags` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '评价标签，多个用逗号分隔',
+  `is_resolved` tinyint DEFAULT 0 COMMENT '问题是否已解决：0-否, 1-是',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`feedback_id`) USING BTREE,
+  KEY `idx_order_id` (`order_id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_feedback_type` (`feedback_type`),
+  KEY `idx_create_time` (`create_time`),
+  CONSTRAINT `fk_feedback_order` FOREIGN KEY (`order_id`) REFERENCES `tbkf_work_order_info` (`order_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='工单反馈信息表';
+
