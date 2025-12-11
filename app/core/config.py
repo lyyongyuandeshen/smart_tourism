@@ -19,10 +19,10 @@ class Settings(BaseSettings):
 
     @property
     def DATABASE_URL(self) -> str:
-        print( f"mysql+aiomysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
+        print( f"mysql+asyncmy://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
             f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DB}"+"?charset=utf8mb4")
         return (
-            f"mysql+aiomysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
+            f"mysql+asyncmy://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
             f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DB}"+"?charset=utf8mb4"
         )
 

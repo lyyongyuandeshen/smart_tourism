@@ -81,6 +81,16 @@ class ConfigManager:
             self._tos_service = TosService(tos_config)
         return self._tos_service
 
+    def get_intangible_cultural_heritage_service(self):
+        """获取非遗技艺服务实例"""
+        if not hasattr(self, '_intangible_cultural_heritage_service') or self._intangible_cultural_heritage_service is None:
+            # 延迟导入避免循环依赖
+            from app.services.intangible_cultural_heritage_service import IntangibleCulturalHeritageService
+            pool = self.get_mysql_pool()
+            tos_service = self.get_tos_service()
+            self._intangible_cultural_heritage_service = IntangibleCulturalHeritageService(pool, tos_service)
+        return self._intangible_cultural_heritage_service
+
     def _load_tos_config(self) -> TosConfig:
         """从环境变量加载TOS配置"""
         return TosConfig(

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import tickets, scenic_spots, facilities, cultural_heritage, schedules, merchant_applications, \
-    member_levels, sso, chat, work_orders, tos
+    member_levels, sso, chat, work_orders, tos, intangible_cultural_heritage
 
 api_router = APIRouter()
 
@@ -79,4 +79,11 @@ api_router.include_router(
     tos.router,
     prefix="/tos",
     tags=["tos"]
+)
+
+# 注册非遗技艺相关路由
+api_router.include_router(
+    intangible_cultural_heritage.router,
+    prefix="/intangible-cultural-heritage",
+    tags=["非遗技艺教学"]
 )
