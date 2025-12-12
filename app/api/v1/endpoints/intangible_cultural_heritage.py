@@ -5,13 +5,13 @@ import logging
 from app.models.intangible_cultural_heritage_models import (
     IntangibleCulturalHeritageCreate,
     IntangibleCulturalHeritageResponse,
-    IntangibleCulturalHeritageQueryRequest,
     IntangibleCulturalHeritageListResponse,
     IntangibleCulturalHeritageUploadResponse,
     IntangibleCulturalHeritageDeleteResponse,
-    VideoUploadRequest,
+    IntangibleCulturalHeritageNameUpdate,
+    IntangibleCulturalHeritagePublishUpdate,
     WatchVideoRequest,
-    WatchVideoResponse
+    WatchVideoResponse, IntangibleCulturalHeritagePublishResponse
 )
 from app.services.intangible_cultural_heritage_service import IntangibleCulturalHeritageService
 from app.services.tos_service import TosService
@@ -249,40 +249,33 @@ async def get_intangible_cultural_heritage_detail(
         )
 
 
-@router.put("/{heritage_number}", response_model=IntangibleCulturalHeritageUploadResponse, summary="更新非遗技艺信息")
-async def update_intangible_cultural_heritage(
+@router.put("/{heritage_number}/name", response_model=IntangibleCulturalHeritageUploadResponse, summary="更新非遗技艺名称")
+async def update_intangible_cultural_heritage_name(
     heritage_number: str,
-    heritage_name: Optional[str] = Form(None, description="非遗名称"),
-    interactive_question_bank: Optional[str] = Form(None, description="互动题库"),
-    video_url: Optional[str] = Form(None, description="视频URL地址链接"),
-    is_published: Optional[bool] = Form(None, description="是否发布"),
+    heritage_name: str = Form(..., description="非遗名称（必传）"),
     heritage_service: IntangibleCulturalHeritageService = Depends(get_intangible_cultural_heritage_service)
 ):
     """
-    更新非遗技艺信息
+    更新非遗技艺名称
+    
+    注意：此接口仅允许修改非遗名称，其他字段不可修改
     
     Args:
-        heritage_number: 非遗编号
-        heritage_name: 非遗名称（可选）
-        interactive_question_bank: 互动题库（可选）
-        video_url: 视频URL地址链接（可选）
-        is_published: 是否发布（可选）
+        heritage_number: 非遗编号（必传）
+        heritage_name: 非遗名称（必传）
         heritage_service: 非遗技艺服务实例
         
     Returns:
         更新响应
     """
     try:
-        from app.models.intangible_cultural_heritage_models import IntangibleCulturalHeritageUpdate
-        
-        update_data = IntangibleCulturalHeritageUpdate(
-            heritage_name=heritage_name,
-            interactive_question_bank=interactive_question_bank,
-            video_url=video_url,
-            is_published=is_published
+        # 构建更新数据，只包含名称字段
+        update_data = IntangibleCulturalHeritageNameUpdate(
+            heritage_number=heritage_number,
+            heritage_name=heritage_name
         )
-        
-        response = heritage_service.update_intangible_cultural_heritage(heritage_number, update_data)
+
+        response = heritage_service.update_intangible_cultural_heritage_name(update_data)
         
         if not response.success:
             raise HTTPException(
@@ -295,10 +288,63 @@ async def update_intangible_cultural_heritage(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"更新非遗技艺失败: {str(e)}")
+        logger.error(f"更新非遗技艺名称失败: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"更新失败：{str(e)}"
+        )
+
+
+@router.put("/{heritage_number}/publish", response_model=IntangibleCulturalHeritagePublishResponse, summary="发布非遗技艺")
+async def publish_intangible_cultural_heritage(
+    heritage_number: str,
+    is_published: bool = Form(True, description="是否发布（只能设置为True）"),
+    heritage_service: IntangibleCulturalHeritageService = Depends(get_intangible_cultural_heritage_service)
+):
+    """
+    发布非遗技艺
+    
+    注意：此接口只能将非遗技艺从未发布状态更新为发布状态
+    
+    Args:
+        heritage_number: 非遗编号（必传）
+        is_published: 是否发布（只能设置为True）
+        heritage_service: 非遗技艺服务实例
+        
+    Returns:
+        发布响应
+    """
+    try:
+        # 验证只能设置为发布状态
+        if not is_published:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="发布接口只能将非遗技艺设置为发布状态"
+            )
+        
+        # 构建更新数据，只包含发布状态字段
+        update_data = IntangibleCulturalHeritagePublishUpdate(
+            heritage_number=heritage_number,
+            is_published=is_published
+        )
+
+        response = heritage_service.update_intangible_cultural_heritage_publish(update_data)
+        
+        if not response.success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=response.message
+            )
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"发布非遗技艺失败: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"发布失败：{str(e)}"
         )
 
 

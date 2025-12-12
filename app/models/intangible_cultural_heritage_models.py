@@ -35,6 +35,36 @@ class IntangibleCulturalHeritageUpdate(BaseModel):
     is_published: Optional[bool] = Field(None, description="是否发布")
 
 
+class IntangibleCulturalHeritageLimitedUpdate(BaseModel):
+    """
+    非遗技艺有限更新请求模型
+    
+    注意：此模型只允许更新非遗名称和发布状态，
+    其他字段（互动题库、视频URL）不可修改
+    """
+    heritage_number: str = Field(description="非遗编号（必传）")
+    heritage_name: Optional[str] = Field(None, description="非遗名称")
+    is_published: Optional[bool] = Field(None, description="是否发布")
+
+
+class IntangibleCulturalHeritageNameUpdate(BaseModel):
+    """非遗技艺名称更新请求模型
+    
+    注意：此模型只允许更新非遗名称，其他字段不可修改
+    """
+    heritage_number: str = Field(description="非遗编号（必传）")
+    heritage_name: str = Field(description="非遗名称（必传）")
+
+
+class IntangibleCulturalHeritagePublishUpdate(BaseModel):
+    """非遗技艺发布状态更新请求模型
+    
+    注意：此模型只允许将非遗技艺从未发布状态更新为发布状态
+    """
+    heritage_number: str = Field(description="非遗编号（必传）")
+    is_published: bool = Field(description="是否发布（只能设置为True）")
+
+
 class IntangibleCulturalHeritageResponse(IntangibleCulturalHeritageBase):
     """非遗技艺响应模型"""
     id: int = Field(description="主键ID")
@@ -53,6 +83,13 @@ class IntangibleCulturalHeritageQueryRequest(BaseModel):
     is_published: Optional[bool] = Field(None, description="是否发布")
     page: int = Field(1, ge=1, description="页码")
     page_size: int = Field(10, ge=1, le=100, description="每页数量")
+
+
+class IntangibleCulturalHeritagePublishResponse(BaseModel):
+    """非遗技艺发布响应模型"""
+    success: bool
+    message: str
+    heritage_number: Optional[str] = None
 
 
 class IntangibleCulturalHeritageListResponse(BaseModel):

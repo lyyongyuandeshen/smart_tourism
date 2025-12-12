@@ -196,23 +196,38 @@ class IntangibleCulturalHeritageRepository(BaseRepository):
         Returns:
             影响的行数
         """
-        query = """
+        # 构建动态SET子句
+        set_clauses = []
+        params = []
+        
+        if 'heritage_name' in heritage_data:
+            set_clauses.append("heritage_name = %s")
+            params.append(heritage_data['heritage_name'])
+        
+        if 'interactive_question_bank' in heritage_data:
+            set_clauses.append("interactive_question_bank = %s")
+            params.append(heritage_data['interactive_question_bank'])
+        
+        if 'is_published' in heritage_data:
+            set_clauses.append("is_published = %s")
+            params.append(heritage_data['is_published'])
+        
+        # 如果没有要更新的字段，直接返回0
+        if not set_clauses:
+            return 0
+        
+        # 添加updated_at字段
+        set_clauses.append("updated_at = NOW()")
+        
+        # 构建完整的查询语句
+        query = f"""
             UPDATE t_intangible_cultural_heritage
-            SET heritage_name = %s,
-                interactive_question_bank = %s,
-                video_url = %s,
-                is_published = %s,
-                updated_at = NOW()
+            SET {', '.join(set_clauses)}
             WHERE heritage_number = %s
         """
-        params = (
-            heritage_data['heritage_name'],
-            heritage_data['interactive_question_bank'],
-            heritage_data['video_url'],
-            heritage_data.get('is_published', False),
-            heritage_number
-        )
-        return self.execute_update(query, params)
+        params.append(heritage_number)
+        
+        return self.execute_update(query, tuple(params))
     
     def delete_intangible_cultural_heritage(self, heritage_number: str) -> int:
         """

@@ -8,11 +8,13 @@ from app.repository.intangible_cultural_heritage_repo import IntangibleCulturalH
 from app.models.intangible_cultural_heritage_models import (
     IntangibleCulturalHeritageResponse,
     IntangibleCulturalHeritageCreate,
-    IntangibleCulturalHeritageUpdate,
+    IntangibleCulturalHeritageLimitedUpdate,
+    IntangibleCulturalHeritageNameUpdate,
+    IntangibleCulturalHeritagePublishUpdate,
     IntangibleCulturalHeritageQueryRequest,
     IntangibleCulturalHeritageListResponse,
     IntangibleCulturalHeritageUploadResponse,
-    IntangibleCulturalHeritageDeleteResponse
+    IntangibleCulturalHeritageDeleteResponse, IntangibleCulturalHeritagePublishResponse
 )
 from app.services.tos_service import TosService
 from app.models.tos_models import UploadFileData
@@ -34,10 +36,10 @@ class IntangibleCulturalHeritageService:
         """
         # 获取当前日期
         current_date = datetime.now().strftime("%Y%m%d")
-        
+
         # 获取最大编号
         max_number = self.heritage_repo.get_max_heritage_number()
-        
+
         if max_number and max_number.startswith(f"SN{current_date}"):
             # 如果当天已有编号，递增序号
             sequence = int(max_number[-5:]) + 1
@@ -45,13 +47,13 @@ class IntangibleCulturalHeritageService:
         else:
             # 当天第一个编号
             new_sequence = "00001"
-        
+
         return f"SN{current_date}{new_sequence}"
 
     async def upload_video_and_create_heritage(
-        self, 
-        heritage_data: IntangibleCulturalHeritageCreate,
-        video_file: UploadFile
+            self,
+            heritage_data: IntangibleCulturalHeritageCreate,
+            video_file: UploadFile
     ) -> IntangibleCulturalHeritageUploadResponse:
         """
         上传视频并创建非遗技艺记录
@@ -69,10 +71,10 @@ class IntangibleCulturalHeritageService:
                 file=video_file,
                 custom_path="intangible_cultural_heritage/videos"
             )
-            
+
             # 2. 生成非遗编号
             heritage_number = self._generate_heritage_number()
-            
+
             # 3. 创建非遗技艺记录
             heritage_record = {
                 'heritage_number': heritage_number,
@@ -81,9 +83,9 @@ class IntangibleCulturalHeritageService:
                 'video_url': upload_result.file_path,  # 使用TOS返回的文件路径
                 'is_published': False  # 默认不发布
             }
-            
+
             rows_affected = self.heritage_repo.create_intangible_cultural_heritage(heritage_record)
-            
+
             if rows_affected > 0:
                 return IntangibleCulturalHeritageUploadResponse(
                     success=True,
@@ -98,7 +100,7 @@ class IntangibleCulturalHeritageService:
                     success=False,
                     message="非遗技艺创建失败"
                 )
-                
+
         except HTTPException:
             raise
         except Exception as e:
@@ -108,8 +110,8 @@ class IntangibleCulturalHeritageService:
             )
 
     def query_intangible_cultural_heritages(
-        self, 
-        request: IntangibleCulturalHeritageQueryRequest
+            self,
+            request: IntangibleCulturalHeritageQueryRequest
     ) -> IntangibleCulturalHeritageListResponse:
         """
         查询非遗技艺列表
@@ -123,7 +125,7 @@ class IntangibleCulturalHeritageService:
         try:
             # 计算偏移量
             offset = (request.page - 1) * request.page_size
-            
+
             # 查询非遗技艺列表
             heritages = self.heritage_repo.get_intangible_cultural_heritages(
                 heritage_number=request.heritage_number,
@@ -133,7 +135,7 @@ class IntangibleCulturalHeritageService:
                 offset=offset,
                 limit=request.page_size
             )
-            
+
             # 查询总数
             total = self.heritage_repo.count_intangible_cultural_heritages(
                 heritage_number=request.heritage_number,
@@ -141,7 +143,7 @@ class IntangibleCulturalHeritageService:
                 interactive_question_bank=request.interactive_question_bank,
                 is_published=request.is_published
             )
-            
+
             # 转换为响应模型
             heritage_list = [
                 IntangibleCulturalHeritageResponse(
@@ -156,7 +158,7 @@ class IntangibleCulturalHeritageService:
                 )
                 for h in heritages
             ]
-            
+
             return IntangibleCulturalHeritageListResponse(
                 success=True,
                 message="查询成功",
@@ -165,7 +167,7 @@ class IntangibleCulturalHeritageService:
                 page_size=request.page_size,
                 data=heritage_list
             )
-            
+
         except Exception as e:
             return IntangibleCulturalHeritageListResponse(
                 success=False,
@@ -176,7 +178,8 @@ class IntangibleCulturalHeritageService:
                 data=[]
             )
 
-    def search_by_heritage_name(self, heritage_name: str, page: int = 1, page_size: int = 10) -> IntangibleCulturalHeritageListResponse:
+    def search_by_heritage_name(self, heritage_name: str, page: int = 1,
+                                page_size: int = 10) -> IntangibleCulturalHeritageListResponse:
         """
         根据非遗名称模糊搜索
         
@@ -230,7 +233,8 @@ class IntangibleCulturalHeritageService:
         )
         return self.query_intangible_cultural_heritages(request)
 
-    def get_intangible_cultural_heritage_by_number(self, heritage_number: str) -> Optional[IntangibleCulturalHeritageResponse]:
+    def get_intangible_cultural_heritage_by_number(self, heritage_number: str) -> Optional[
+        IntangibleCulturalHeritageResponse]:
         """
         根据非遗编号查询非遗技艺详情
         
@@ -242,10 +246,10 @@ class IntangibleCulturalHeritageService:
         """
         try:
             heritage = self.heritage_repo.get_intangible_cultural_heritage_by_number(heritage_number)
-            
+
             if not heritage:
                 return None
-            
+
             return IntangibleCulturalHeritageResponse(
                 id=heritage['id'],
                 heritage_number=heritage['heritage_number'],
@@ -256,72 +260,124 @@ class IntangibleCulturalHeritageService:
                 created_at=heritage['created_at'],
                 updated_at=heritage['updated_at']
             )
-            
+
         except Exception as e:
             return None
 
-    def update_intangible_cultural_heritage(
-        self, 
-        heritage_number: str, 
-        update_data: IntangibleCulturalHeritageUpdate
+    def update_intangible_cultural_heritage_name(
+            self,
+            update_data: IntangibleCulturalHeritageNameUpdate
     ) -> IntangibleCulturalHeritageUploadResponse:
         """
-        更新非遗技艺信息
+        更新非遗技艺名称
+        
+        注意：此方法只允许更新非遗名称，其他字段不可修改
         
         Args:
-            heritage_number: 非遗编号
-            update_data: 更新数据
+            update_data: 名称更新数据（包含heritage_number和heritage_name字段）
             
         Returns:
             更新响应
         """
         try:
             # 检查非遗技艺是否存在
-            existing_heritage = self.heritage_repo.get_intangible_cultural_heritage_by_number(heritage_number)
-            
+            existing_heritage = self.heritage_repo.get_intangible_cultural_heritage_by_number(update_data.heritage_number)
+
             if not existing_heritage:
                 return IntangibleCulturalHeritageUploadResponse(
                     success=False,
-                    message=f"非遗技艺不存在：{heritage_number}"
+                    message=f"非遗技艺不存在：{update_data.heritage_number}"
                 )
-            
-            # 构建更新数据
-            heritage_data = {}
-            if update_data.heritage_name is not None:
-                heritage_data['heritage_name'] = update_data.heritage_name
-            if update_data.interactive_question_bank is not None:
-                heritage_data['interactive_question_bank'] = update_data.interactive_question_bank
-            if update_data.video_url is not None:
-                heritage_data['video_url'] = update_data.video_url
-            if update_data.is_published is not None:
-                heritage_data['is_published'] = update_data.is_published
-            
-            # 如果没有需要更新的字段
-            if not heritage_data:
+
+            # 验证非遗名称不能为空
+            if update_data.heritage_name.strip() == '':
                 return IntangibleCulturalHeritageUploadResponse(
                     success=False,
-                    message="没有需要更新的字段"
+                    message="非遗名称不能为空"
                 )
-            
-            # 更新非遗技艺
-            rows_affected = self.heritage_repo.update_intangible_cultural_heritage(heritage_number, heritage_data)
-            
+
+            # 构建更新数据，只更新名称
+            heritage_data = {
+                'heritage_name': update_data.heritage_name
+            }
+
+            # 更新非遗技艺名称
+            rows_affected = self.heritage_repo.update_intangible_cultural_heritage(update_data.heritage_number, heritage_data)
+
             if rows_affected > 0:
                 return IntangibleCulturalHeritageUploadResponse(
                     success=True,
-                    message="非遗技艺更新成功",
-                    heritage_number=heritage_number
+                    message="非遗技艺名称更新成功",
+                    heritage_number=update_data.heritage_number
                 )
             else:
                 return IntangibleCulturalHeritageUploadResponse(
                     success=False,
-                    message="非遗技艺更新失败"
+                    message="非遗技艺名称更新失败"
                 )
-                
+
         except Exception as e:
             return IntangibleCulturalHeritageUploadResponse(
                 success=False,
-                message=f"更新失败：{str(e)}"
+                message=f"名称更新失败：{str(e)}"
+            )
+
+    def update_intangible_cultural_heritage_publish(
+            self,
+            update_data: IntangibleCulturalHeritagePublishUpdate
+    ) -> IntangibleCulturalHeritagePublishResponse:
+        """
+        更新非遗技艺发布状态
+        
+        注意：此方法只允许将非遗技艺从未发布状态更新为发布状态
+        
+        Args:
+            update_data: 发布更新数据（包含heritage_number和is_published字段）
+            
+        Returns:
+            更新响应
+        """
+        try:
+            # 检查非遗技艺是否存在
+            existing_heritage = self.heritage_repo.get_intangible_cultural_heritage_by_number(update_data.heritage_number)
+
+            if not existing_heritage:
+                return IntangibleCulturalHeritagePublishResponse(
+                    success=False,
+                    message=f"非遗技艺不存在：{update_data.heritage_number}"
+                )
+
+            # 验证发布状态必须为True
+            if not update_data.is_published:
+                return IntangibleCulturalHeritagePublishResponse(
+                    success=False,
+                    message="发布操作只能将非遗技艺设置为发布状态"
+                )
+
+            # 构建更新数据，只更新发布状态
+            heritage_data = {
+                'is_published': update_data.is_published
+            }
+
+            # 更新非遗技艺发布状态
+            rows_affected = self.heritage_repo.update_intangible_cultural_heritage(update_data.heritage_number, heritage_data)
+
+            if rows_affected > 0:
+                return IntangibleCulturalHeritagePublishResponse(
+                    success=True,
+                    message="非遗技艺发布状态更新成功",
+                    heritage_number=update_data.heritage_number
+                )
+            else:
+                return IntangibleCulturalHeritagePublishResponse(
+                    success=False,
+                    message="非遗技艺发布状态更新失败"
+                )
+
+        except Exception as e:
+            return IntangibleCulturalHeritagePublishResponse(
+                success=False,
+                message=f"发布状态更新失败：{str(e)}"
             )
 
     def delete_intangible_cultural_heritage(self, heritage_number: str) -> IntangibleCulturalHeritageDeleteResponse:
@@ -337,16 +393,16 @@ class IntangibleCulturalHeritageService:
         try:
             # 检查非遗技艺是否存在
             existing_heritage = self.heritage_repo.get_intangible_cultural_heritage_by_number(heritage_number)
-            
+
             if not existing_heritage:
                 return IntangibleCulturalHeritageDeleteResponse(
                     success=False,
                     message=f"非遗技艺不存在：{heritage_number}"
                 )
-            
+
             # 删除非遗技艺
             rows_affected = self.heritage_repo.delete_intangible_cultural_heritage(heritage_number)
-            
+
             if rows_affected > 0:
                 return IntangibleCulturalHeritageDeleteResponse(
                     success=True,
@@ -358,7 +414,7 @@ class IntangibleCulturalHeritageService:
                     success=False,
                     message="非遗技艺删除失败"
                 )
-                
+
         except Exception as e:
             return IntangibleCulturalHeritageDeleteResponse(
                 success=False,
