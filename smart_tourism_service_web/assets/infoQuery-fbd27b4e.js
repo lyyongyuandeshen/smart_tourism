@@ -1,0 +1,1 @@
+import{d as s,o as t,b as n,g as e,D as _}from"./index-1b86b595.js";const a={class:"p-6"},c=s({__name:"infoQuery",setup(d){return(r,o)=>(t(),n("div",a,[...o[0]||(o[0]=[e("h1",{class:"text-2xl font-bold mb-6"},"信息查询",-1),e("div",{class:"bg-white rounded-lg shadow p-4"},[e("p",null,"这里是信息查询页面内容")],-1)])]))}});const p=_(c,[["__scopeId","data-v-0c5f8c5d"]]);export{p as default};

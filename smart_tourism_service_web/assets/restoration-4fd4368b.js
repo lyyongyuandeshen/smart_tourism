@@ -1,0 +1,1 @@
+import{D as t,o as s,b as o,g as r}from"./index-1b86b595.js";const a={},n={ref:"divRef",id:"tourist-services-container"};function c(_,e){return s(),o("div",n,[...e[0]||(e[0]=[r("iframe",{class:"hiagent-iframe",src:"http://14.103.248.148/product/llm/chat/d4sirktait9q9otpdgtg"},null,-1)])],512)}const f=t(a,[["render",c],["__scopeId","data-v-ff7f0356"]]);export{f as default};

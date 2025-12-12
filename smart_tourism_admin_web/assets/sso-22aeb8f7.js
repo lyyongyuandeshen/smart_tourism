@@ -1,0 +1,1 @@
+import{b6 as o}from"./index-5805bd08.js";function s(t){return o({url:"/v1/sso/auth-url",method:"get",params:{callback_url:t}})}function e(t){return o({url:"/v1/sso/login",method:"post",data:t})}function n(){return o({url:"/v1/sso/config",method:"get"})}export{s as a,n as g,e as s};

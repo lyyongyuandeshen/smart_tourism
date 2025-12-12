@@ -1,0 +1,1 @@
+import{d as e,n,o,c,a6 as p,a8 as r,b7 as d}from"./index-5805bd08.js";const m=e({__name:"index",props:{type:{},content:{}},setup(t){const a=t,s=n(()=>`mt-tag mt-tag__${a.type||"success"}`);return(_,l)=>(o(),c("span",{class:r(s.value)},p(t.content),3))}}),u=d(m,[["__scopeId","data-v-bda7dd5d"]]);export{u as M};
