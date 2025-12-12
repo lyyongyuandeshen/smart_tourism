@@ -13,21 +13,21 @@ logger = logging.getLogger(__name__)
 
 class SSOService:
     """SSO集成服务"""
-    
+
     def __init__(self):
         # SSO服务配置
         self.sso_auth_url = "https://test-api.smdata.com.cn/wisdomSimingApp/sso"
         self.sso_api_base_url = "http://115.190.160.216/api/v1"
         self.client_id = "qoos2xwcpl0svmf7"
         self.client_secret = "b5hjzmqc62u0wx861q89t8mcjvh9f5gu"
-        
+
         # HTTP客户端配置
         self.timeout = 30.0
         self.headers = {
             "Content-Type": "application/json",
             "User-Agent": "SmartTourism/1.0"
         }
-    
+
     def generate_auth_url(self, callback_url: str) -> str:
         """
         生成SSO授权URL
@@ -39,7 +39,7 @@ class SSOService:
             str: 授权URL
         """
         return f"{self.sso_auth_url}?appClientId={self.client_id}&callBackUrl={callback_url}"
-    
+
     async def get_access_token(self, code: str) -> AccessTokenResponse:
         """
         获取访问令牌
@@ -59,17 +59,17 @@ class SSOService:
             "client_id": self.client_id,
             "client_secret": self.client_secret
         }
-        
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, json=payload, headers=self.headers)
                 response.raise_for_status()
-                
+
                 result = response.json()
                 logger.info(f"获取访问令牌成功: {result}")
-                
+
                 return AccessTokenResponse(**result)
-                
+
         except httpx.HTTPStatusError as e:
             logger.error(f"获取访问令牌HTTP错误: {e.response.status_code} - {e.response.text}")
             raise Exception(f"获取访问令牌失败: HTTP {e.response.status_code}")
@@ -79,7 +79,7 @@ class SSOService:
         except Exception as e:
             logger.error(f"获取访问令牌未知错误: {e}")
             raise Exception(f"获取访问令牌失败: {str(e)}")
-    
+
     async def get_user_info(self, code: str, access_token: str) -> UserInfoResponse:
         """
         获取用户信息
@@ -99,17 +99,17 @@ class SSOService:
             "code": code,
             "access_token": access_token
         }
-        
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, json=payload, headers=self.headers)
                 response.raise_for_status()
-                
+
                 result = response.json()
                 logger.info(f"获取用户信息成功: {result}")
-                
+
                 return UserInfoResponse(**result)
-                
+
         except httpx.HTTPStatusError as e:
             logger.error(f"获取用户信息HTTP错误: {e.response.status_code} - {e.response.text}")
             raise Exception(f"获取用户信息失败: HTTP {e.response.status_code}")
@@ -119,7 +119,7 @@ class SSOService:
         except Exception as e:
             logger.error(f"获取用户信息未知错误: {e}")
             raise Exception(f"获取用户信息失败: {str(e)}")
-    
+
     async def sso_login(self, code: str) -> SSOLoginResponse:
         """
         SSO一键登录（封装获取Token和用户信息的操作）
@@ -136,19 +136,19 @@ class SSOService:
             "client_id": self.client_id,
             "client_secret": self.client_secret
         }
-        
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, json=payload, headers=self.headers)
                 response.raise_for_status()
-                
+
                 result = response.json()
                 logger.info(f"SSO登录成功: {result}")
-                
+
                 # 解析用户信息
                 user_info = None
                 access_token = None
-                
+
                 if result.get("code") == 0 and result.get("data"):
                     data = result["data"]
                     if "user_info" in data:
@@ -156,10 +156,9 @@ class SSOService:
                             user_info = UserInfo(**data["user_info"])
                         except Exception as e:
                             logger.warning(f"解析用户信息失败: {e}")
-                    
-                    # 如果响应中包含access_token
-                    access_token = data.get("access_token")
-                
+
+                token_result = await self.get_access_token(code)
+                access_token = token_result.data.get("access_token")
                 return SSOLoginResponse(
                     success=result.get("code") == 0,
                     message=result.get("msg", "登录成功"),
@@ -167,7 +166,7 @@ class SSOService:
                     access_token=access_token,
                     user_info=user_info
                 )
-                
+
         except httpx.HTTPStatusError as e:
             logger.error(f"SSO登录HTTP错误: {e.response.status_code} - {e.response.text}")
             return SSOLoginResponse(
@@ -189,7 +188,7 @@ class SSOService:
                 message=f"SSO登录失败: {str(e)}",
                 data=None
             )
-    
+
     async def validate_token(self, access_token: str) -> bool:
         """
         验证访问令牌是否有效
@@ -203,7 +202,7 @@ class SSOService:
         # 这里可以实现令牌验证逻辑
         # 目前简单返回True，实际项目中应该调用SSO服务验证
         return bool(access_token and len(access_token) > 0)
-    
+
     def extract_user_basic_info(self, user_info: UserInfo) -> Dict[str, Any]:
         """
         提取用户基本信息
