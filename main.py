@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from app.api.v1.router import api_router
 from app.config.config import config
+from app.db.session import init_engine
 
 app = FastAPI(
     title="智慧旅游系统API",
@@ -21,6 +22,7 @@ app.add_middleware(
     expose_headers=["*"]
 )
 
+
 # 全局异常处理器
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -35,7 +37,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "error_type": error["type"]
         }
         errors.append(error_info)
-    
+
     return JSONResponse(
         status_code=422,
         content={
@@ -60,7 +62,7 @@ async def pydantic_validation_exception_handler(request: Request, exc: Validatio
             "error_type": error["type"]
         }
         errors.append(error_info)
-    
+
     return JSONResponse(
         status_code=400,
         content={
@@ -78,6 +80,7 @@ app.include_router(api_router, prefix="/api/v1")
 
 async def init_function():
     config.inject()
+    await init_engine()
 
 
 app.add_event_handler("startup", init_function)
