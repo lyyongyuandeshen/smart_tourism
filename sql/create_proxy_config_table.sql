@@ -17,8 +17,7 @@ INSERT INTO `tbkf_proxy_config_info` (`name`, `base_url`, `api_key`, `is_active`
 ('e_support', 'http://14.103.248.148/api/proxy/api/v1', 'd4n9lj0vunsomkclbbgg', TRUE),
 ('answer_advice', 'http://14.103.248.148/api/proxy/api/v1', 'd4rnn75ait9q9otpbohg', TRUE),
 ('ai_error_correction', 'http://14.103.248.148/api/proxy/api/v1', 'd4rpjegvunsomkclddvg', TRUE),
-('query_knowledge_dataset', 'http://14.103.248.148/api/proxy/api/v1', 'd4rp3plait9q9otpbpr0', TRUE);
-COMMIT;
+('query_knowledge_dataset', 'http://14.103.248.148/api/proxy/api/v1', 'd4rp3plait9q9otpbpr0', TRUE)
 ON DUPLICATE KEY UPDATE
     `base_url` = VALUES(`base_url`),
     `api_key` = VALUES(`api_key`),
