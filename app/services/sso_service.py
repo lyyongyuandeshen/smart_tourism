@@ -154,6 +154,8 @@ class SSOService:
                     if "user_info" in data:
                         try:
                             user_info = UserInfo(**data["user_info"])
+                            # 将用户信息插入到sys_user表
+                            await self._insert_user_to_db(user_info)
                         except Exception as e:
                             logger.warning(f"解析用户信息失败: {e}")
 
@@ -234,3 +236,72 @@ class SSOService:
                 for dept in user_info.user_depts
             ]
         }
+
+    async def _insert_user_to_db(self, user_info: UserInfo) -> None:
+        """
+        将用户信息插入到sys_user表
+        
+        Args:
+            user_info: 用户信息对象
+        """
+        try:
+            from app.config.config import config
+            from datetime import datetime
+            
+            pool = config.get_mysql_pool()
+            if not pool:
+                logger.error("数据库连接池未初始化")
+                return
+            
+            conn = None
+            cursor = None
+            try:
+                conn = pool.get_connection()
+                cursor = conn.cursor()
+                
+                # 先检查用户是否已存在
+                check_query = "SELECT user_id FROM sys_user WHERE user_id = %s"
+                cursor.execute(check_query, (user_info.id,))
+                existing_user = cursor.fetchone()
+                
+                if existing_user:
+                    logger.info(f"用户已存在，跳过插入: {user_info.id}")
+                    return
+                
+                # 插入用户信息
+                insert_query = """
+                    INSERT INTO sys_user (
+                        user_id, user_name, nick_name, user_type, email, 
+                        phonenumber, status, del_flag, create_time
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                
+                params = (
+                    user_info.id,  # user_id
+                    user_info.userRealName,  # user_name
+                    user_info.userRealName,  # nick_name
+                    '00',  # user_type 默认值
+                    user_info.userBizEmail or None,  # email
+                    user_info.userMobile or None,  # phonenumber
+                    user_info.userStatus or '0',  # status
+                    '0',  # del_flag 默认值
+                    datetime.now()  # create_time
+                )
+                
+                cursor.execute(insert_query, params)
+                conn.commit()
+                logger.info(f"成功插入用户信息到sys_user表: {user_info.id}")
+                
+            except Exception as e:
+                if conn:
+                    conn.rollback()
+                logger.error(f"插入用户信息到数据库失败: {e}")
+                raise
+            finally:
+                if cursor:
+                    cursor.close()
+                if conn:
+                    conn.close()
+                    
+        except Exception as e:
+            logger.error(f"处理用户信息插入失败: {e}")

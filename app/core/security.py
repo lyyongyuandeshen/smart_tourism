@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Dict
 
@@ -33,6 +34,7 @@ def decode_access_token(token: str) -> Dict[str, Any]:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
     except JWTError as exc:
+        logging.error(f"Error decode_access_token: {exc}")
         raise ValueError("Invalid token") from exc
     return payload
 

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db_session, get_current_user_id
+from app.api.deps import get_db_session
 from app.utils.dict_translate import translate_response
 
 router = APIRouter()
@@ -165,7 +165,7 @@ async def list_work_orders(
     start_time: Optional[datetime] = Query(None, description="开始时间"),
     end_time: Optional[datetime] = Query(None, description="结束时间"),
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(..., description="当前用户ID"),
 ) -> WorkOrderListResponse:
     """分页查询工单列表"""
     offset = (page - 1) * page_size
@@ -230,7 +230,7 @@ async def list_work_orders(
 async def get_work_order(
     order_id: str,
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(..., description="当前用户ID"),
 ) -> WorkOrderResponse:
     """获取工单详情"""
     sql = text("""
@@ -283,7 +283,7 @@ async def list_work_order_nodes(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(10, ge=1, le=100, description="每页数量"),
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(..., description="当前用户ID"),
 ) -> WorkOrderNodeListResponse:
     """分页查询工单节点记录"""
     # 检查工单是否存在
@@ -324,7 +324,7 @@ async def list_work_order_nodes(
 async def create_work_order(
     order_data: WorkOrderCreate,
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(..., description="当前用户ID"),
 ) -> dict:
     """创建新工单"""
     # 生成工单ID和编号
@@ -418,7 +418,7 @@ async def update_work_order(
     order_id: str,
     order_data: WorkOrderUpdate,
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(..., description="当前用户ID"),
 ) -> dict:
     """更新工单信息"""
     # 检查工单是否存在
@@ -479,7 +479,7 @@ async def update_work_order(
 async def delete_work_order(
     order_id: str,
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(..., description="当前用户ID"),
 ) -> dict:
     """删除工单（物理删除，会级联删除节点和反馈）"""
     # 检查工单是否存在
@@ -505,7 +505,7 @@ async def process_work_order_node(
     order_id: str,
     process_data: WorkOrderNodeProcess,
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(..., description="当前用户ID"),
 ) -> dict:
     """处理工单节点（提交/转派/关闭）"""
     # 检查工单是否存在
@@ -674,7 +674,7 @@ async def create_work_order_feedback(
     order_id: str,
     feedback_data: WorkOrderFeedback,
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(..., description="当前用户ID"),
 ) -> dict:
     """创建工单反馈（处理结果反馈、服务质量评价）"""
     # 检查工单是否存在
@@ -714,7 +714,7 @@ async def create_work_order_feedback(
 async def get_work_order_progress(
     order_id: str,
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(..., description="当前用户ID"),
 ) -> dict:
     """获取工单处理进度（多节点流转）"""
     # 检查工单是否存在

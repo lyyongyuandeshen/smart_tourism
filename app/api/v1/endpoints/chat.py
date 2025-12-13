@@ -13,8 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decode_access_token
-from app.api.deps import get_db_session, get_current_user_id
+from app.api.deps import get_db_session
 from app.services.websocket_manager import manager
 from app.services.proxy_config import get_proxy_config_or_default
 import httpx
@@ -29,10 +28,10 @@ async def websocket_info():
     """
     WebSocket 实时聊天接口说明
     
-    **连接地址**: `ws://your-domain/api/chat/ws?token=JWT_TOKEN&session_id=可选`
+    **连接地址**: `ws://your-domain/api/chat/ws?user_id=uid&session_id=可选`
     
     **连接参数**:
-    - `token` (必需): JWT Token，用于身份验证
+    - `user_id` (必需): 用户ID，用于身份验证
     - `session_id` (可选): 会话ID，如果不存在则自动创建新会话
     
     **消息格式**:
@@ -65,9 +64,9 @@ async def websocket_info():
     
     **前端连接示例**:
     ```javascript
-    const token = "your_jwt_token";
+    const user_id = "your_user_id";
     const sessionId = "chat_123456"; // 可选
-    const ws = new WebSocket(`ws://localhost:8000/api/chat/ws?token=${token}&session_id=${sessionId}`);
+    const ws = new WebSocket(`ws://localhost:8000/api/chat/ws?user_id=${user_id}&session_id=${sessionId}`);
     
     // 接收消息
     ws.onmessage = (event) => {
@@ -96,7 +95,7 @@ async def websocket_info():
     return {
         "websocket_url": "ws://your-domain/api/chat/ws",
         "description": "WebSocket 实时聊天接口",
-        "authentication": "需要在查询参数中提供 JWT Token",
+        "authentication": "需要在查询参数中提供 user_id",
         "features": [
             "AI 对话",
             "转人工客服",
@@ -120,27 +119,17 @@ async def websocket_info():
     }
 
 
-async def get_user_id_from_token(token: str) -> Optional[str]:
-    """从 WebSocket 查询参数中获取用户ID"""
-    try:
-        payload = decode_access_token(token)
-        user_id: Optional[str] = payload.get("uid")
-        return user_id
-    except Exception:
-        return None
-
-
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
-    token: Optional[str] = None,
+    user_id: Optional[str] = None,
     session_id: Optional[str] = None,
 ):
     """
     WebSocket 实时聊天接口
     
     连接参数:
-    - token: JWT Token（必需，用于身份验证）
+    - user_id: 用户ID（必需，用于身份验证）
     - session_id: 会话ID（可选，如果不存在则创建新会话）
     
     消息格式:
@@ -160,14 +149,9 @@ async def websocket_endpoint(
         "timestamp": "2024-01-01T00:00:00"
     }
     """
-    # 验证 Token
-    if not token:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="缺少 Token")
-        return
-    
-    user_id = await get_user_id_from_token(token)
-    if  not user_id:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Token 无效")
+    # 验证 user_id
+    if not user_id:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="缺少 user_id")
         return
     
     # 获取或创建会话ID
@@ -533,17 +517,11 @@ async def _transfer_to_human(
 
 async def _get_customer_service_users(session: AsyncSession) -> list:
     """获取有客服权限的用户ID列表"""
-    # 这里假设有一个角色标识客服权限，比如 role_key = 'customer_service'
-    # 或者通过菜单权限来判断，比如有 '/api/chat/customer-service' 路径的 all 权限
+    # 角色表没有数据，直接返回用户表
     sql = text("""
         SELECT DISTINCT u.user_id, u.user_name
         FROM sys_user u
-        JOIN sys_user_role ur ON u.user_id = ur.user_id
-        JOIN sys_role r ON ur.role_id = r.role_id AND r.del_flag = '0' AND r.status = '0'
-        JOIN sys_role_menu rm ON r.role_id = rm.role_id
-        JOIN sys_menu m ON rm.menu_id = m.menu_id
         WHERE u.del_flag = '0' AND u.status = '0'
-          AND m.path LIKE '%/chat%' AND rm.permission = 'all'
     """)
     result = await session.execute(sql)
     return [dict(row) for row in result.mappings().all()]
@@ -773,7 +751,7 @@ async def list_public_sessions(
     page_size: int = Query(10, ge=1, le=100, description="每页数量"),
     status: Optional[str] = Query(None, description="会话状态：waiting-等待中, active-进行中, closed-已关闭"),
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(None, description="当前用户ID"),
 ) -> dict:
     """
     获取待处理的公开聊天会话列表（仅客服可见）
@@ -853,7 +831,7 @@ async def list_public_sessions(
 async def join_public_session(
     session_id: str,
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(None, description="当前用户ID")
 ) -> dict:
     """
     客服接入公开聊天会话
@@ -943,7 +921,7 @@ async def get_public_session_messages(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(50, ge=1, le=100, description="每页数量"),
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(None, description="当前用户ID")
 ) -> dict:
     """
     获取公开聊天会话的消息列表（客服查看）
@@ -1022,7 +1000,7 @@ async def reply_public_session(
     session_id: str,
     reply_data: ReplyRequest,
     session: AsyncSession = Depends(get_db_session),
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Query(None, description="当前用户ID")
 ) -> dict:
     """
     客服回复公开聊天消息

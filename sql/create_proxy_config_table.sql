@@ -47,7 +47,11 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
   UNIQUE KEY `uk_sys_user_user_name` (`user_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='用户信息表';
 
---角色表
+INSERT INTO `sys_user` (`user_id`, `user_name`, `nick_name`) VALUES
+('001', 'admin', 'test');
+COMMIT;
+
+-- 角色表
 CREATE TABLE IF NOT EXISTS `sys_role` (
   `role_id` varchar(30) NOT NULL COMMENT '角色ID',
   `role_name` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '角色名称',
@@ -67,7 +71,7 @@ CREATE TABLE IF NOT EXISTS `sys_role` (
   UNIQUE KEY `uk_sys_role_role_key` (`role_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='角色信息表';
 
---菜单表
+-- 菜单表
 CREATE TABLE IF NOT EXISTS `sys_menu` (
   `menu_id` varchar(30) NOT NULL COMMENT '菜单ID',
   `menu_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '菜单名称',
@@ -92,7 +96,7 @@ CREATE TABLE IF NOT EXISTS `sys_menu` (
   PRIMARY KEY (`menu_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='菜单权限表';
 
---角色菜单权限表
+-- 角色菜单权限表
 CREATE TABLE IF NOT EXISTS `sys_role_menu` (
   `role_id` varchar(30) NOT NULL COMMENT '角色ID',
   `menu_id` varchar(30) NOT NULL COMMENT '菜单ID',

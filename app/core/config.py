@@ -9,20 +9,20 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
 
     # Database
-    MYSQL_USER: str = "root"
+    MYSQL_USER: str = "mtkf"
     # 对密码中的 @ 进行 URL 编码
     # @ 在 URL 中的编码是 %40，所以正确的 URL 应该是：
-    MYSQL_PASSWORD: str = ""
-    MYSQL_HOST: str = ""
+    MYSQL_PASSWORD: str = "Mtkf2023%40"
+    MYSQL_HOST: str = "192.168.8.182"
     MYSQL_PORT: int = 3306
-    MYSQL_DB: str = "db_smart_tourism"
+    MYSQL_DB: str = "ai_kefu"
 
     @property
     def DATABASE_URL(self) -> str:
-        print( f"mysql+asyncmy://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
+        print( f"mysql+aiomysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
             f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DB}"+"?charset=utf8mb4")
         return (
-            f"mysql+asyncmy://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
+            f"mysql+aiomysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
             f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DB}"+"?charset=utf8mb4"
         )
 
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     KAFKA_HEALTH_TOPIC: str = ""
 
     # Security / JWT
-    SECRET_KEY: str = ""
+    SECRET_KEY: str = "change-me-in-.env"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 3600
     JWT_ALGORITHM: str = "HS256"
 
